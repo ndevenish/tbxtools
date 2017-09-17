@@ -16,7 +16,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def Module(object):
+class Module(object):
   """
   Represents a module in a tbx-like distribution.
 
@@ -30,9 +30,9 @@ def Module(object):
     :param path: The path to the module, relative to distribution root
     :param dist:      The distribution this module belongs to
     """
-    self.name = os.path.basename(modulepath)
-    self.path = dist_path
-    self.dist = distribution
+    self.name = os.path.basename(path)
+    self.path = path
+    self.dist = dist
 
     # A dictionary of configuration files written to libtbx_config
     self.config = {
@@ -45,7 +45,7 @@ def Module(object):
     }
 
     # Load information about this module from the libtbx_config... if there is one
-    config_filename = os.path.join(dist.path, dist_path, "libtbx_config")
+    config_filename = os.path.join(dist.path, self.path, "libtbx_config")
     if os.path.isfile(config_filename):
       with open(config_filename) as f:
         # Unfortunately, these files aren't json but some custom-written
@@ -89,7 +89,7 @@ class Distribution(object):
     "Search the distribution for a path matching a module name"
     for repo in self.repositories:
       if os.path.isdir(os.path.join(self.path, repo, name)):
-        return os.path.join(repo, name)
+        return os.path.normpath(os.path.join(repo, name))
 
   def _load_dependencies_for(self, module):
     "Ensure the dependencies for a given module are loaded"
