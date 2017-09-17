@@ -139,7 +139,7 @@ class Distribution(object):
     """Load a list of modules, but also mark them as specifically requested."""
     self._requested_modules |= set(names)
     for modulename in names:
-      if load_module(modulename) is None:
+      if self.load_module(modulename) is None:
         raise DependencyError("Could not find requested module {}".format(modulename))
 
   @property

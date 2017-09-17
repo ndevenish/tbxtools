@@ -1,2 +1,2 @@
 
-from .model import Distribution
+from .model import Distribution, DependencyError
