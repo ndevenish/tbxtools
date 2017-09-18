@@ -21,3 +21,13 @@ def testRepositories():
   dist.request_modules(["repo_module", "root_module"])
   assert dist["repo_module"].path == "cctbx_project/repo_module"
   assert dist["root_module"].path == "root_module"
+
+def testBasicDependency():
+  dist = Distribution(test_dist)
+  dist.request_modules(["root_module"])
+  assert "repo_module" in dist
+
+def testBadDepModule():
+  dist = Distribution(test_dist)
+  with pytest.raises(DependencyError):
+    dist.request_modules(["bad_dep_module"])

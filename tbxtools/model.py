@@ -53,7 +53,7 @@ class Module(object):
         for key, value in ast.literal_eval(f.read()).items():
           if not key in self.config:
             logger.warning("Unknown libtbx_config key {} in module {}".format(key, self.name))
-          config[key] = value
+          self.config[key] = value
 
   # @property
   # def dependencies(self):
@@ -99,7 +99,7 @@ class Distribution(object):
                set(module.config["modules_required_for_use"])
     for dep_name in abs_deps:
       if self.load_module(dep_name) is None:
-        raise DependencyError("Cannot find module {} (required by {})".format(dep_name, name))
+        raise DependencyError("Cannot find module {} (required by {})".format(dep_name, module.name))
     # Just try loading optional dependencies without worrying about the result
     for dep_name in module.config["optional_modules"]:
       try:
