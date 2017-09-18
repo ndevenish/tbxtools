@@ -16,6 +16,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class DependencyError(RuntimeError):
+  "Represents an error resolving module dependencies"
+
 class Module(object):
   """
   Represents a module in a tbx-like distribution.
@@ -74,9 +77,6 @@ class Module(object):
                   # 'required_for_build': [],
                   # 'required_for_use': ['xfel']}
 
-class DependencyError(RuntimeError):
-  pass
-
 class Distribution(object):
   # Paths to search for modules within. This handles the cctbx_project subdirectory
   repositories = {".", "cctbx_project"}
@@ -89,7 +89,7 @@ class Distribution(object):
 
     # Without libtbx it's probably not a tbx-distribution?
     if not self.load_module("libtbx"):
-      logger.warning("Could not find libtbx in distribution; This is probably not intentional")
+      logger.warning("Could not find libtbx in distribution; This is allowed but probably not intentional")
 
   def _find_module_dir(self, name):
     "Search the distribution for a path matching a module name"
