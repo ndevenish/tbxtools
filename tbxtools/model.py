@@ -55,6 +55,8 @@ class Module(object):
             logger.warning("Unknown libtbx_config key {} in module {}".format(key, self.name))
           self.config[key] = value
 
+  def __repr__(self):
+    return "<Module {}>".format(self.name)
   # @property
   # def dependencies(self):
   #   "Returns a list of modules this module depends on/uses"
@@ -80,10 +82,14 @@ class Distribution(object):
   repositories = {".", "cctbx_project"}
 
   def __init__(self, module_path, build_path=None):
-    self.path = module_path
+    self.path = os.path.abspath(module_path)
     self.build_path = build_path
     self._modules = {}
     self._requested_modules = set()
+
+    # Without libtbx it's probably not a tbx-distribution?
+    if not self.load_module("libtbx"):
+      logger.warning("Could not find libtbx in distribution; This is probably not intentional")
 
   def _find_module_dir(self, name):
     "Search the distribution for a path matching a module name"
@@ -103,7 +109,7 @@ class Distribution(object):
     # Just try loading optional dependencies without worrying about the result
     for dep_name in module.config["optional_modules"]:
       try:
-        self.find_module(dep_name)
+        self.load_module(dep_name)
       except DependencyError:
         pass
 
