@@ -104,11 +104,13 @@ class Distribution(object):
     abs_deps = set(module.config["modules_required_for_build"]) | \
                set(module.config["modules_required_for_use"])
     for dep_name in abs_deps:
+      logger.debug("Loading dependency for {}: {}".format(module.name, dep_name))
       if self.load_module(dep_name) is None:
         raise DependencyError("Cannot find module {} (required by {})".format(dep_name, module.name))
     # Just try loading optional dependencies without worrying about the result
     for dep_name in module.config["optional_modules"]:
       try:
+        logger.debug("Optionally loading dependency for {}: {}".format(module.name, dep_name))
         self.load_module(dep_name)
       except DependencyError:
         pass
@@ -150,7 +152,7 @@ class Distribution(object):
 
   @property
   def modules(self):
-    return self._modules.items()
+    return self._modules.values()
 
   def __getitem__(self, name):
     return self._modules[name]
