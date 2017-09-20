@@ -13,6 +13,8 @@ Create a libtbx environment WITHOUT having to import libtbx
 import os
 import ast
 import logging
+import collections
+import itertools
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +39,18 @@ class Module(object):
     self.path = path
     self.dist = dist
 
+    # To track the dependency graph
+    self.dependencies = set()
+    self.dependents = set()
+
     # A dictionary of configuration files written to libtbx_config
     self.config = {
-      'modules_required_for_use': [],
-      'modules_required_for_build': [],
-      'optional_modules': [],
-      'exclude_from_binary_bundle': [],
+      'modules_required_for_use': set(),
+      'modules_required_for_build': set(),
+      'optional_modules': set(),
+      'exclude_from_binary_bundle': set(),
       # Extra paths (other than ".") to look for command_line subfolders
-      'extra_command_line_locations': [],
+      'extra_command_line_locations': set(),
     }
 
     # Load information about this module from the libtbx_config... if there is one
@@ -56,6 +62,9 @@ class Module(object):
         for key, value in ast.literal_eval(f.read()).items():
           if not key in self.config:
             logger.warning("Unknown libtbx_config key {} in module {}".format(key, self.name))
+          # Convert lists to sets
+          if isinstance(value, list):
+            value = set(value)
           self.config[key] = value
 
   def __repr__(self):
@@ -81,11 +90,12 @@ class Distribution(object):
   # Paths to search for modules within. This handles the cctbx_project subdirectory
   repositories = {".", "cctbx_project"}
 
-  def __init__(self, module_path, build_path=None):
+  def __init__(self, module_path, ignore_missing=None, build_path=None):
     self.path = os.path.abspath(module_path)
     self.build_path = build_path
     self._modules = {}
     self._requested_modules = set()
+    self._ignore_missing = set(ignore_missing) if ignore_missing else set()
 
     # Without libtbx it's probably not a tbx-distribution?
     if not self.load_module("libtbx"):
@@ -107,13 +117,27 @@ class Distribution(object):
       logger.debug("Loading dependency for {}: {}".format(module.name, dep_name))
       if self.load_module(dep_name) is None:
         raise DependencyError("Cannot find module {} (required by {})".format(dep_name, module.name))
+      else:
+        # Add to the dependency graph
+        module.dependencies.add(self._modules[dep_name])
+        self._modules[dep_name].dependents.add(module)
+
     # Just try loading optional dependencies without worrying about the result
     for dep_name in module.config["optional_modules"]:
       try:
         logger.debug("Optionally loading dependency for {}: {}".format(module.name, dep_name))
-        self.load_module(dep_name)
+        dep = self.load_module(dep_name)
+        if dep is None:
+          logger.debug("  ...not found")
+        else:
+          logger.debug("  found")
+          # Add this to the dependency graph
+          module.dependencies.add(dep)
+          dep.dependents.add(module)
+
       except DependencyError:
         pass
+        
 
   def load_module(self, name):
     """Search the distribution module paths for a module, and load it.
@@ -129,6 +153,19 @@ class Distribution(object):
     if not module_path:
       return None
     module = Module(path=module_path, dist=self)
+    # Alter the module dependencies if we have any modules to ignore if missing
+
+    for dep_type in ["modules_required_for_build", "modules_required_for_use"]:
+      overlap = self._ignore_missing & module.config[dep_type]
+      # If we have any of the potentially missing modules as a hard requirement...
+      if overlap:
+        logger.debug("Module {}: Making dependenc{} {} optional".format(
+                      module.name, 
+                      "y" if len(overlap) == 1 else "ies", 
+                      ", ".join("'" + x + "'" for x in overlap)))
+        module.config[dep_type] -= self._ignore_missing
+        module.config["optional_modules"] |= overlap
+
     # Now try loading any dependency requirements...
     # We need to add to the modules data to avoid problems with dependency
     # loops, but reverse in case of a dependency load failure down the line.
