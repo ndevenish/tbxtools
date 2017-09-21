@@ -31,7 +31,6 @@ def run_expand_dependencies():
   """
 
   options = docopt(textwrap.dedent(run_expand_dependencies.__doc__))
-  print(options)
   logging.basicConfig(stream=sys.stderr, level=logging.DEBUG if options["--verbose"] else logging.INFO)
   dist = Distribution(options["<distribution>"], ignore_missing=options["--optional"])
   
