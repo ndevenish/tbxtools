@@ -25,6 +25,7 @@ def run_expand_dependencies():
   Options:
     -h --help       Display this message
     --cmake         Return the output list in a semicolon-separated, cmake-style list
+    --graphviz      Return a Graphviz dot-format directed graph
     -v, --verbose   Debugging output
     --optional MOD  Always treat a module as optional, even if normally required.
                     This can be used to handle otherwise missing modules.
@@ -52,17 +53,36 @@ def run_expand_dependencies():
   if sys.stdout.isatty():
     primary_format = "\033[1m{}\033[0m"
 
-  module_names = []
-  for module in sorted(dist.modules, key=lambda x: x.name):
-    fmts = primary_format if not module.dependents else "{}"
-    # Special case is libtbx: we never need to request this
-    if module.name == "libtbx":
-      fmts = "{}"
-    module_names.append(fmts.format(module.name))
+  if options["--graphviz"]:
+    print "digraph distribution {"
+    for module in dist.modules:
+      if module.name == "libtbx": 
+        continue
+      for dependency in module.dependencies:
+        if dependency.name == "libtbx":
+          continue
+        print("  {} -> {};".format(module.name, dependency.name))
+      if not module.dependencies and not module.dependents:
+        print("  {};".format(module.name))
+    print("}")
+ #     digraph graphname {
+ #     a -> b -> c;
+ #     b -> d;
+ # }
+  else:
+    # Build a list of module names
+    module_names = []
+    for module in sorted(dist.modules, key=lambda x: x.name):
+      fmts = primary_format if not module.dependents else "{}"
+      # Special case is libtbx: we never need to request this
+      # if module.name == "libtbx":
+      #   fmts = "{}"
+      module_names.append(fmts.format(module.name))
 
-  # Now print out the results
-  joiner = ";" if options["--cmake"] else " "
+    # Now print out the results
+    joiner = ";" if options["--cmake"] else " "
 
-  # module_names = [x.name for x in dist.modules]
-  print(joiner.join(module_names))
+    # module_names = [x.name for x in dist.modules]
+    print(joiner.join(module_names))
+    # print(dist["xfel"].dependents)
 

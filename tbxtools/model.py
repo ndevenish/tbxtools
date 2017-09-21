@@ -109,6 +109,12 @@ class Distribution(object):
 
   def _load_dependencies_for(self, module):
     "Ensure the dependencies for a given module are loaded"
+
+    # Everything depends on libtbx!
+    if not module is self._modules["libtbx"]:
+      module.dependencies.add(self._modules["libtbx"])
+      self._modules["libtbx"].dependents.add(module)
+    
     # Assume that build/use requirements are both absolute and any missing
     # will cause failure of configuration.
     abs_deps = set(module.config["modules_required_for_build"]) | \
