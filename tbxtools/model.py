@@ -3,12 +3,6 @@
 """
 Contains the model objects for a tbx-like distribution
 """
-#!/usr/bin/env python
-# coding: utf-8
-
-"""
-Create a libtbx environment WITHOUT having to import libtbx
-"""
 
 import os
 import ast
@@ -26,7 +20,7 @@ class Module(object):
   Represents a module in a tbx-like distribution.
 
   A module is literally a folder, but can contain optional configuration
-  files. Thus, the only way to classify a module is by request - it it's 
+  files. Thus, the only way to classify a module is by request - it it's
   requested as a module, and exists as a folder, it is one.
   """
 
@@ -114,8 +108,8 @@ class Distribution(object):
     if not module is self._modules["libtbx"]:
       module.dependencies.add(self._modules["libtbx"])
       self._modules["libtbx"].dependents.add(module)
-    
-    # Assume that build/use requirements are both absolute and any missing
+
+    # Assume that build/use requirements are both absolute and any missing
     # will cause failure of configuration.
     abs_deps = set(module.config["modules_required_for_build"]) | \
                set(module.config["modules_required_for_use"])
@@ -124,11 +118,11 @@ class Distribution(object):
       if self.load_module(dep_name) is None:
         raise DependencyError("Cannot find module {} (required by {})".format(dep_name, module.name))
       else:
-        # Add to the dependency graph
+        # Add to the dependency graph
         module.dependencies.add(self._modules[dep_name])
         self._modules[dep_name].dependents.add(module)
 
-    # Just try loading optional dependencies without worrying about the result
+    # Just try loading optional dependencies without worrying about the result
     for dep_name in module.config["optional_modules"]:
       try:
         logger.debug("Optionally loading dependency for {}: {}".format(module.name, dep_name))
@@ -143,7 +137,7 @@ class Distribution(object):
 
       except DependencyError:
         pass
-        
+
 
   def load_module(self, name):
     """Search the distribution module paths for a module, and load it.
@@ -172,9 +166,9 @@ class Distribution(object):
         module.config[dep_type] -= self._ignore_missing
         module.config["optional_modules"] |= overlap
 
-    # Now try loading any dependency requirements...
-    # We need to add to the modules data to avoid problems with dependency
-    # loops, but reverse in case of a dependency load failure down the line.
+    # Now try loading any dependency requirements...
+    # We need to add to the modules data to avoid problems with dependency
+    # loops, but reverse in case of a dependency load failure down the line.
     try:
       self._modules[name] = module
       self._load_dependencies_for(module)
