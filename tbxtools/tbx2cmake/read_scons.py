@@ -9,6 +9,7 @@ import sys
 import networkx as nx
 import collections
 import itertools
+import yaml
 
 from .utils import return_as_list
 from .sconsemu import SconsEmulator, Target
@@ -203,7 +204,9 @@ def read_module_path_sconscripts(module_path):
 
   # Find an order of processing that satisfies dependencies
   G = _build_dependency_graph(modules.values())
-  node_order = list(reversed(list(nx.lexicographical_topological_sort(G))))
+  node_order = nx.topological_sort(G, reverse=True, nbunch=sorted(G.nodes()))
+  # for networkX2: list(reversed(list(nx.lexicographical_topological_sort(G))))
+
   logger.debug("Dependency processing order: {}".format(node_order))
 
   # Prepare the SCons emulator
@@ -346,19 +349,19 @@ def main(args=None):
     "modules": []
   }
 
-  for module in (x for x in modules if x.targets):
+  for module in (x for x in tbx.modules.values() if x.targets):
     scons_data["modules"].append({
       "path": module.path,
       "name": module.name
     })
 
-  for target in targets:
+  for target in tbx.targets:
     tdict = {
       "name": target.name,
       "type": target.type.value.lower(),
       "origin": target.origin_path,
       "sources": list(target.sources),
-      "module": target.tbxmodule.name,
+      "module": target.module.name,
     }
     if target.filename != target.name:
       tdict["filename"] = target.filename
