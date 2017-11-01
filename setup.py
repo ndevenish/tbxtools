@@ -11,7 +11,9 @@ setup(
         'console_scripts': [
           'tbx-expand-deps=tbxtools.info_tools:run_expand_dependencies',
           # 'tbx2cmake=tbx2cmake.write_cmake:main'
+          'tbx2depfile=tbxtools.tbx2cmake.read_scons:main',
+          'tbx2cmake=tbxtools.tbx2cmake.write_cmake:main'
         ],
     },
-    # install_requires=["enum34", "docopt", "networkx", "pyyaml", "mock"],
+    install_requires=["enum34", "docopt", "networkx<2", "pyyaml", "mock"],
 )
