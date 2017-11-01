@@ -7,17 +7,23 @@ No root CMakeLists.txt will be created. Instead, an autogen-CMakeLists.txt
 file will be created in the root directory that can be included by the root
 CMakeLists.txt. Writing of this root may be added later.
 
-Usage: tbx2cmake <module_dir> <autogen.yaml> <output_dir>
+Usage: tbx2cmake [--build-info=<infofile>] <module_dir> <output_dir>
+
+Options:
+--build-info=<infofile>   The build information file, to supply extra info
+                          about e.g. dependencies, generated file output. See
+                          tbxtools/tbx2cmake/build_info.yaml for the defaults.
 """
 
 import sys
 import os
 import logging
+import pkgutil
 
 from docopt import docopt
 import yaml
 
-from .utils import fully_split_path 
+from .utils import fully_split_path
 from .read_scons import read_distribution
 from .sconsemu import Target
 
@@ -308,8 +314,13 @@ class CMLLibraryOutput(CMakeListBlock):
     return "\n".join(lines)
 
 def read_autogen_information(filename, tbx):
-  with open(filename) as f:
-    data = yaml.load(f)
+  if filename:
+    with open(filename) as f:
+      data = yaml.load(f)
+  else:
+    import pdb
+    pdb.set_trace()
+    data = yaml.load(pkgutil.get_data("tbxtools.tbx2cmake", "build_info.yaml"))
 
   # Load the list of module-refresh-generated files
   for modname, value in data.get("libtbx_refresh", {}).items():
@@ -404,7 +415,7 @@ def main():
   options = docopt(__doc__)
   module_dir = options["<module_dir>"]
   output_dir = options["<output_dir>"]
-  autogen_file = options["<autogen.yaml>"]
+  autogen_file = options["--build-info"]
 
   # Validate the input values
   if not os.path.isdir(module_dir):
