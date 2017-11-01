@@ -313,7 +313,9 @@ class CMLLibraryOutput(CMakeListBlock):
 
     return "\n".join(lines)
 
-def read_autogen_information(filename, tbx):
+def _read_autogen_information(filename, tbx):
+  "Read a build information override file and apply to a distribution"
+
   if filename:
     with open(filename) as f:
       data = yaml.load(f)
@@ -427,7 +429,7 @@ def main():
 
   logger.info("Reading TBX distribution")
   tbx = read_distribution(module_dir)
-  read_autogen_information(autogen_file, tbx)
+  _read_autogen_information(autogen_file, tbx)
 
   logger.info("Read {} targets in {} modules".format(len(tbx.targets), len(tbx.modules)))
 
