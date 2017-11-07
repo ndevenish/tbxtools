@@ -14,6 +14,8 @@ import contextlib
 from .utils import AttrDict
 from .utils import monkeypatched
 
+import logging
+logger = logging.getLogger(__name__)
 
 class FakePath(object):
   pass
@@ -72,16 +74,16 @@ class libtbxEnv(object):
     return os.path.join("BASEDIR", path)#UnderBase(path)
 
   def dist_path(self, module):
-    print("Asked for dist path {}".format(module))
+    logger.debug("Asked for dist path {}".format(module))
 
     for repo in [".", "cctbx_project"]:
       path = os.path.normpath(os.path.join(self._dist_path, repo, module))
       if os.path.isdir(path):
-        print("  found exact {}".format(path))
+        logger.debug("  found exact {}".format(path))
         return path
     assert False
     ret = "DISTPATH[{}]/".format(module)
-    print("   returning {} ".format(ret))
+    logger.debug("   returning {} ".format(ret))
     return ret
 
   def under_dist(self, module_name, path):
@@ -103,7 +105,7 @@ class libtbxEnv(object):
     return True
 
   def write_dispatcher_in_bin(self, source_file, target_file):
-    print("Called to write dispatcher {} to {}".format(target_file, source_file))
+    logger.debug("Called to write dispatcher {} to {}".format(target_file, source_file))
 
 class libtbxIncludeRegistry(list):
   def scan_boost(self, *args, **kwargs):

@@ -15,6 +15,9 @@ from enum import Enum
 from .utils import InjectableModule, monkeypatched
 from .import_env import do_import_patching
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ProgramReturn(object):
   """Thin shim to represent the return from a Program builder.
 
@@ -236,7 +239,7 @@ class SConsEnvironment(object):
         linkflags.remove(flag)
     assert not linkflags, "Unknown link flag: {}".format(linkflags)
     if linkflags:
-      print("Unhandled link flags: ", linkflags)
+      logger.debug("Unhandled link flags: ", linkflags)
 
     # Handle include directories.
     # import pdb
@@ -254,7 +257,7 @@ class SConsEnvironment(object):
         }
       extra_paths = set(target.env["CPPPATH"]) - COMMON_INCLUDES
       if extra_paths:
-        print ("Path: {}".format(sorted(extra_paths)))
+        logger.debug ("Path: {}".format(sorted(extra_paths)))
 
     if targettype == Target.Type.SHARED:
       target.prefix = target.env["SHLIBPREFIX"]
@@ -263,7 +266,7 @@ class SConsEnvironment(object):
 
     target.module = self.runner._current_module
     target.module.targets.append(target)
-    print(str(target))
+    logger.debug(str(target))
 
 
     self.runner.targets.append(target)
@@ -291,7 +294,7 @@ class SConsEnvironment(object):
     # print("CUDA program: {}, {}".format(target, source))
 
   def SharedObject(self,source):
-    print("Shared object: {}".format(source))
+    logger.debug("Shared object: {}".format(source))
     return SharedObject(source, self)
 
 
@@ -459,7 +462,7 @@ class _fake_system_env(object):
     if path == "DISTPATH/boost/boost/system":
       return True
 
-    print("IS DIR: {}".format(path))
+    logger.debug("IS DIR: {}".format(path))
     # Everything exists for sconsscripts!
     # allowed_exists = {,}
     return True
@@ -469,8 +472,8 @@ class _fake_system_env(object):
     if file.startswith("DISTPATH/ccp4io/libccp4/ccp4"):
       return False
 
-    print("IS FILE: {}".format(file))
-    traceback.print_stack()
+    logger.debug("IS FILE: {}".format(file))
+    logger.debug("".join(traceback.format_stack()))
 
     with self.suspend():
       # If given a special location, try to find it
@@ -483,20 +486,20 @@ class _fake_system_env(object):
             file = path + file[len(module)+10:]
       elif file.startswith("DISTPATH"):
         file = os.path.join(self.env.dist_path, file[9:])
-      print("Out: {}".format(file))
+      logger.debug("Out: {}".format(file))
 
       if os.path.isfile(file):
-        print("  YES")
+        logger.debug("  YES")
         return True
       else:
-        print("  NO")
+        logger.debug("  NO")
         return False
       return os.path.isfile(file)
 
 
   def _fake_exists(self, path):
-    print("EXISTS: {}".format(path))
-    traceback.print_stack()
+    logger.debug("EXISTS: {}".format(path))
+    logger.debug("".join(traceback.format_stack()))
     return self._orig[os.path]["exists"](path)  
 
 class SconsEmulator(object):
@@ -518,19 +521,19 @@ class SconsEmulator(object):
     self._current_module = module
     scons = os.path.join(self.dist_path, module.path, "SConscript")
     if not os.path.isfile(scons):
-      print("No Sconscript for module {}".format(module.name))
+      logger.debug("No Sconscript for module {}".format(module.name))
       return
-    print "Parsing {}".format(module.name)  
-    
+    logger.info("Parsing {}".format(module.name))
+
     self._fake_env = _fake_system_env(self)
     with self._fake_env:
       self.parse_sconscript(scons)
 
   def sconscript_command(self, name, exports=None):
     newpath = os.path.join(os.path.dirname(self._current_sconscript), name)
-    print("Loading sub-sconscript {}".format(newpath))
+    logger.debug("Loading sub-sconscript {}".format(newpath))
     self.parse_sconscript(newpath, custom_exports=exports)
-    print("Returning to sconscript {}".format(self._current_sconscript))
+    logger.debug("Returning to sconscript {}".format(self._current_sconscript))
 
   def parse_sconscript(self, filename, custom_exports=None):
     # Build the object used to run the script
@@ -538,11 +541,11 @@ class SconsEmulator(object):
 
     # Build the Scons injection environment
     def _env_export(*args):
-      print "Exporting", args
+      logger.debug("Exporting {}".format(args))
       for name in args:
         self._exports[name] = module.getvar(name)
     def _env_import(*args):
-      print "Importing", args
+      logger.debug("Importing {}".format(args))
       inj = {}
       for imp in args:
         if custom_exports and imp in custom_exports:
