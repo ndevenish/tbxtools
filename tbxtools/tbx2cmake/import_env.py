@@ -152,13 +152,17 @@ def _libtbx_select_matching(key, choices, default=None):
 
 
 def _tbx_darwin_shlinkcom(env_etc, env, lo, dylib):
-  # Don't understand the purpose or intent of this functions, but seems 
-  # mostly ignorable without damage.
+  # Don't fully understand the purpose or intent of this functions - but
+  # seems related to an old way of building shared libraries on OSX - that
+  # used to require a custom link step. This function would set up the custom
+  # link step on the environment object.
   if "libboost_thread.lo" in lo:
     return
   if "libboost_python.lo" in lo:
     return
   if "libboost_system.lo" in lo:
+    return
+  if "libboost_numpy.lo" in lo:
     return
   _wtf(env_etc, env, lo, dylib)
 
