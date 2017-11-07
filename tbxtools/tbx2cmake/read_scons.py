@@ -247,7 +247,7 @@ def read_distribution(module_path):
   tbx = read_module_path_sconscripts(module_path)
 
   # Remove the boost targets
-  boost_target_names = {"boost_thread", "boost_system", "boost_python", "boost_chrono"}
+  boost_target_names = {"boost_thread", "boost_system", "boost_python", "boost_chrono", "boost_numpy"}
   boost_targets = {x for x in tbx.targets if x.name in boost_target_names}
   for target in boost_targets:
     logger.info("Removing target {} (in {})".format(target.name, target.module.name))
@@ -315,7 +315,7 @@ def read_distribution(module_path):
   logger.info("{} Targets remaining".format(len(tbx.targets)))
 
   # Check that we know and expect all the external libraries
-  assert external_libs == {"tiff", "boost_python", "GL", "GLU", "hdf5"}, "Unexpected extra external libs in: {}".format(external_libs)
+  assert external_libs == {"tiff", "boost_python", "GL", "GLU", "hdf5", "boost_numpy"}, "Unexpected extra external libs in: {}".format(external_libs)
 
   return tbx
 

@@ -249,6 +249,11 @@ def do_import_patching(dist_path):
   SCons.Action.FunctionAction = Mock()
   SCons.Scanner.C.CScanner = Mock()
 
+  # Fake numpy so that we always get it's dependents
+  numpy = new_module("numpy")
+  numpy.get_include = lambda : "NUMPY_INCLUDE"
+
+
 # def monkeypatched(object, name, patch):
 #   """ Temporarily monkeypatches an object. """
 #   pre_patched_value = getattr(object, name)
