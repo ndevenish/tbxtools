@@ -37,6 +37,7 @@ DEPENDENCY_RENAMES = {
   "GLU": "OpenGL::GLU",
   "boost_thread": "Boost::thread",
   "hdf5_c": "HDF5::C",
+  "hdf5": "HDF5::HDF5",
   "boost": "Boost::boost",
   "eigen": "Eigen::Eigen",
 }
