@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='tbxtools',
-    packages=["tbxtools"],
+    packages=["tbxtools", "tbxtools.tbx2cmake"],
     version='0.1.0',
     description='Tools for introspecting and working with a tbx distribution',
     entry_points = {
