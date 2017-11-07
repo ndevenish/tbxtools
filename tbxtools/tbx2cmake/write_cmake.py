@@ -48,6 +48,8 @@ OPTIONAL_DEPENDS = {
   "boost_thread", "GL", "GLU"
 }
 
+_warned_types = set()
+
 class CMakeLists(object):
   "Represents a single CMakeLists file. Keeps track of subdirectories."
 
@@ -135,7 +137,9 @@ class CMakeLists(object):
         if target.type in {Target.Type.SHARED, Target.Type.STATIC, Target.Type.MODULE}:
           blocks.append(CMLLibraryOutput(target))
         else:
-          print("Not handling {} yet".format(target.type))
+          if not target.type in _warned_types:
+            _warned_types.add(target.type)
+            logger.warn("Not handling {} yet".format(target.type))
 
     if self.subdirectories:
       blocks.append(CMLSubDirBlock(self))
@@ -389,7 +393,7 @@ def _read_autogen_information(filename, tbx):
       deps = [deps]
     # find this target
     target = tbx.targets[name]
-    print("Adding {} to {}".format(", ".join(deps), target.name))
+    logger.debug("Adding {} to {}".format(", ".join(deps), target.name))
     target.extra_libs |= set(deps)
 
   # Handle adding of include paths to specific targets/modules
