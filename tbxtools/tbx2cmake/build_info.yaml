@@ -8,37 +8,31 @@ dependencies:
   ann: [annlib_adaptbx, scitbx]
   cctbx: [boost]
   _pycbf: [hdf5_c, cbf]
-  cbf: [hdf5_c, scitbx]
+  cbf: [pcre, hdf5_c, scitbx]
   cctbx_large_scale_merging_ext: eigen
   cctbx_xray_ext: fable
   dxtbx_ext: boost_python   # dxtbx_ext seems to be missing the link to boost_python in the libtbx build
   dxtbx_format_nexus_ext: boost_python
   dxtbx_format_image_ext: boost_python
   iotbx_shelx_ext: fable
-  rstbx: [annlib_adaptbx]
+  rstbx: [cctbx, annlib_adaptbx, ann]
   scitbx_examples_bevington_ext: eigen
   scitbx_lbfgs_ext: fable
-  legacy_scale: [annlib_adaptbx]
-  xfel_mono_sim: [annlib_adaptbx]
+  legacy_scale: [annlib_adaptbx, ann]
+  xfel_mono_sim: [annlib_adaptbx, ann]
   hybrid_36_fem: [fable, iotbx] # iotbx needed for auto-regeneration
-  sdrive_fem: [fable, scitbx] # Scitbx needed for auto-regeneration
+  sdrive_fem: [fable, scitbx] # Scitbx needed for auto-regeneration
   ccp4io: scitbx
   cma_es_ext: scitbx
-  cbf: pcre
   # Things built as static on OSX miss out on dependency listings.
-  iotbx_mtz: ccp4io
   scitbx_boost_python: boost_python
-  rstbx: [cctbx, annlib_adaptbx]
   mmtbx_masks: [cctbx, cctbx_sgtbx_asu, omptbx]
   asymmetric_map: [cctbx, cctbx_sgtbx_asu, iotbx_xplor, omptbx]
   iotbx_mtz: [ccp4io, cctbx]
   smtbx_refinement_constraints_ext: [cctbx, scitbx_boost_python, smtbx_refinement_constraints]
   smtbx_refinement_constraints: scitbx
   boost_adaptbx_boost_thread_test_ext: boost_thread
-  rstbx: ann
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
-  legacy_scale: ann
-  xfel_mono_sim: ann
 
 # Change the root location of certain libraries. This handles problems 
 # determining the 'proper' location e.g. annlib uses sources from annlib_adaptbx
