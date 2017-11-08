@@ -42,11 +42,12 @@ DEPENDENCY_RENAMES = {
   "boost": "Boost::boost",
   "boost_numpy": "Boost::numpy",
   "eigen": "Eigen::Eigen",
+  "openmp": "OpenMP::OpenMP_CXX",
 }
 
 # Optional dependencies
 OPTIONAL_DEPENDS = {
-  "boost_thread", "GL", "GLU"
+  "boost_thread", "openmp" # "GL", "GLU"
 }
 
 _warned_types = set()
@@ -298,7 +299,7 @@ class CMLLibraryOutput(CMakeListBlock):
         # inclines.append(_append_list_to("    PRIVATE ", include_private))
       lines.append("\n".join(inclines) + " )")
 
-    extra_libs = self.target.extra_libs
+    extra_libs = self.target.extra_libs - OPTIONAL_DEPENDS
     if self.is_python_module:
       extra_libs = extra_libs - {"boost_python"}
     else:
@@ -307,16 +308,26 @@ class CMLLibraryOutput(CMakeListBlock):
       lines.append("target_link_libraries( {} {} )".format(self.target.name, " ".join(_target_rename(x) for x in extra_libs)))
 
     # Handle any optional dependencies
-    optionals = OPTIONAL_DEPENDS & set(extra_libs)
+    optionals = OPTIONAL_DEPENDS & set(self.target.extra_libs)
     if optionals:
-      # Ensure we have properly split lines before indenting
-      lines = "\n".join(lines).splitlines()
-      # cond_lines = []
-      conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in optionals))
-      cond_lines = ["if({})".format(conditions)]
-      cond_lines.extend("  " + x for x in lines)
-      cond_lines.append("endif()")
-      lines = cond_lines
+      for option in optionals:
+        lines.extend([
+          "",
+          "# Optional dependency on {}".format(option),
+          "if(TARGET {})".format(_target_rename(option)),
+          "  target_link_libraries({} {})".format(self.target.name, _target_rename(option)),
+          "endif()"])
+
+    # OLD optional handling; we may still want to enable/disable targets in the future
+    # based on availability of some other library/target
+      # # Ensure we have properly split lines before indenting
+      # lines = "\n".join(lines).splitlines()
+      # # cond_lines = []
+      # conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in optionals))
+      # cond_lines = ["if({})".format(conditions)]
+      # cond_lines.extend("  " + x for x in lines)
+      # cond_lines.append("endif()")
+      # lines = cond_lines
 
     return "\n".join(lines)
 
