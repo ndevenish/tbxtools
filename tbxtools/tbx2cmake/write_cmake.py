@@ -43,6 +43,7 @@ DEPENDENCY_RENAMES = {
   "boost_numpy": "Boost::numpy",
   "eigen": "Eigen::Eigen",
   "openmp": "OpenMP::OpenMP_CXX",
+  "pcre": "PCRE::PCRE",
 }
 
 # Optional dependencies
