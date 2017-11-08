@@ -250,8 +250,8 @@ class SConsEnvironment(object):
     if "CPPPATH" in target.env.kwargs:
       # Remove things we expect
       COMMON_INCLUDES = {
-        ".", 
-        "DISTPATH", 
+        ".",
+        "DISTPATH",
         "PYTHON/INCLUDE/PATH",
         "UNDERBUILD/include",
         "DISTPATH/boost",
@@ -317,7 +317,7 @@ class Target(object):
   def __init__(self, targettype, output_name, sources):
     assert targettype in self.Type
     self.type = targettype
-    
+
     self.name = os.path.basename(output_name)
     self.filename = self.name
     self.output_path = os.path.dirname(output_name)
@@ -352,7 +352,7 @@ class Target(object):
     out += "   Origin: {}\n".format(self.origin_path)
     if self.module:
       out += "   Module: {}\n".format(self.module)
-      
+
     return out.strip()
 
 

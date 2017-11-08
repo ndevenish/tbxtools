@@ -482,7 +482,10 @@ def main():
     if cml is root:
       filename = "autogen_CMakeLists.txt"
     with open(os.path.join(path, filename), "w") as f:
-      f.write(cml.generate_cmakelist())
+      lines = cml.generate_cmakelist().splitlines()
+      # Strip any trailing whitespace
+      data = "\n".join(x.rstrip() for x in lines)
+      f.write(data)
 
 
 if __name__ == "__main__":
