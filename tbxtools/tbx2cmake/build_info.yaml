@@ -34,6 +34,7 @@ dependencies:
   boost_adaptbx_boost_thread_test_ext: boost_thread
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
   dials_algorithms_image_threshold_ext: openmp
+  scitbx_examples_bevington_ext: scitbx
 
 # Change the root location of certain libraries. This handles problems
 # determining the 'proper' location e.g. annlib uses sources from annlib_adaptbx
