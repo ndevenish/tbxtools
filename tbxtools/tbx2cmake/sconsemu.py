@@ -193,6 +193,9 @@ class SConsEnvironment(object):
       return self._DEFAULT_KWARGS[key]
     return self.kwargs[key]
 
+  def __contains__(self, key):
+    return self.has_key(key)
+
   def has_key(self, key):
     return key in self.kwargs or key in self._DEFAULT_KWARGS
 
