@@ -40,6 +40,7 @@ DEPENDENCY_RENAMES = {
   "hdf5_c": "HDF5::C",
   "hdf5": "HDF5::HDF5",
   "boost": "Boost::boost",
+  "boost_numpy": "Boost::numpy",
   "eigen": "Eigen::Eigen",
 }
 
