@@ -394,6 +394,11 @@ def _read_autogen_information(filename, tbx):
     # find this target
     target = tbx.targets[name]
     logger.debug("Adding {} to {}".format(", ".join(deps), target.name))
+    # Check if any of these aren't required
+    already_added = target.extra_libs & set(deps)
+    if already_added:
+      logger.debug("... although {} are already on target".format(", ".join(already_added)))
+    # Add them all to the lib list
     target.extra_libs |= set(deps)
 
   # Handle adding of include paths to specific targets/modules
