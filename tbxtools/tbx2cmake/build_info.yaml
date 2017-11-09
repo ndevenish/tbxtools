@@ -16,7 +16,7 @@ dependencies:
   dxtbx_format_image_ext: boost_python
   iotbx_shelx_ext: fable
   rstbx: [cctbx, annlib_adaptbx, ann]
-  scitbx_examples_bevington_ext: eigen
+  scitbx_examples_bevington_ext: eigen, scitbx
   scitbx_lbfgs_ext: fable
   legacy_scale: [annlib_adaptbx, ann]
   xfel_mono_sim: [annlib_adaptbx, ann]
@@ -34,7 +34,6 @@ dependencies:
   boost_adaptbx_boost_thread_test_ext: boost_thread
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
   dials_algorithms_image_threshold_ext: openmp
-  scitbx_examples_bevington_ext: scitbx
   scitbx_array_family_flex_ext: numpy
 
 # Change the root location of certain libraries. This handles problems
