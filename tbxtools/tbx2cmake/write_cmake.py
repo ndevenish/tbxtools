@@ -44,6 +44,7 @@ DEPENDENCY_RENAMES = {
   "eigen": "Eigen::Eigen",
   "openmp": "OpenMP::OpenMP_CXX",
   "pcre": "PCRE::PCRE",
+  "numpy": "Python::Numpy",
 }
 
 # Optional dependencies

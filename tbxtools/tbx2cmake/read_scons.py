@@ -288,6 +288,7 @@ def read_distribution(module_path):
     ['nanoBragg_ext.cpp', 'nanoBragg.cpp']
   ]
   for target in [x for x in tbx.targets if x.shared_sources]:
+    assert len(target.shared_sources) == 1
     src = target.shared_sources[0].path
     if isinstance(src, basestring):
       src = [src]

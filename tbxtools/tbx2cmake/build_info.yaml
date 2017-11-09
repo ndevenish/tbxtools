@@ -35,6 +35,7 @@ dependencies:
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
   dials_algorithms_image_threshold_ext: openmp
   scitbx_examples_bevington_ext: scitbx
+  scitbx_array_family_flex_ext: numpy
 
 # Change the root location of certain libraries. This handles problems
 # determining the 'proper' location e.g. annlib uses sources from annlib_adaptbx
