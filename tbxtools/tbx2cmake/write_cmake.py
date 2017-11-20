@@ -305,7 +305,16 @@ class CMLLibraryOutput(CMakeListBlock):
         # inclines.append(_append_list_to("    PRIVATE ", include_private))
       lines.append("\n".join(inclines) + " )")
 
-    extra_libs = self.target.extra_libs - OPTIONAL_DEPENDS - self.target.optional_extra_libs
+    # Calculate the library categories
+
+    # Libraries that this has a hard dependency on
+    extra_libs = (self.target.extra_libs - OPTIONAL_DEPENDS - self.target.optional_extra_libs) | self.target.required_optional
+    # Libraries that are normally optional, but this target has a hard dependency on
+    # required_optional = self.target.required_optional
+    # Libraries that are optional - we don't necessarily need them included
+    optional_libs = ((OPTIONAL_DEPENDS & set(self.target.extra_libs)) | self.target.optional_extra_libs) - self.target.required_optional
+
+    # extra_libs = self.target.extra_libs -  - self.target.optional_extra_libs
     if self.is_python_module:
       extra_libs = extra_libs - {"boost_python"}
     else:
@@ -313,10 +322,12 @@ class CMLLibraryOutput(CMakeListBlock):
     if extra_libs:
       lines.append("target_link_libraries( {} {} )".format(self.target.name, " ".join(_target_rename(x) for x in extra_libs)))
 
+    # Reqired otherwise-optional external libs
+    # required_optional = (self.target.extra_libs - self.target.optional_extra_libs) & OPTIONAL_DEPENDS
+
     # Handle any optional dependencies
-    optionals = (OPTIONAL_DEPENDS & set(self.target.extra_libs)) | self.target.optional_extra_libs
-    if optionals:
-      for option in optionals:
+    if optional_libs:
+      for option in optional_libs:
         lines.extend([
           "",
           "# Optional dependency on {}".format(option),
@@ -324,18 +335,49 @@ class CMLLibraryOutput(CMakeListBlock):
           "  target_link_libraries({} {})".format(self.target.name, _target_rename(option)),
           "endif()"])
 
-    # OLD optional handling; we may still want to enable/disable targets in the future
-    # based on availability of some other library/target
-      # # Ensure we have properly split lines before indenting
-      # lines = "\n".join(lines).splitlines()
-      # # cond_lines = []
-      # conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in optionals))
-      # cond_lines = ["if({})".format(conditions)]
-      # cond_lines.extend("  " + x for x in lines)
-      # cond_lines.append("endif()")
-      # lines = cond_lines
+    # Required optional handling: Libraries that are otherwise optional, but this
+    # target has a hard dependency on.
+    if self.target.required_optional:
+      # Ensure we have properly split lines before indenting
+      lines = "\n".join(lines).splitlines()
+      # cond_lines = []
+      if len(self.target.required_optional) == 1:
+        comment_message = "# {} requires this normally optional dependency".format(self.target.name)
+      else:
+        comment_message = "# {} requires these normally optional dependencies".format(self.target.name)
+
+      conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in self.target.required_optional))
+      cond_lines = [comment_message,"if({})".format(conditions)]
+      cond_lines.extend("  " + x for x in lines)
+      cond_lines.append("endif()")
+      lines = cond_lines
 
     return "\n".join(lines)
+
+
+
+def _expand_target_lib_list(target, liblist, values):
+  """Generic autogen-reading helper function to add targets to a list(s) of targets.
+
+  If there is duplication of information then a logger debug warning will be
+  emitted.
+
+  :param target:  The target to add values to
+  :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
+  :param values:  The value(s) to add to the list(s). `str` or `[str]`
+  """
+  if isinstance(values, basestring):
+    values = [values]
+  if isinstance(liblist, basestring):
+    liblist = [liblist]
+  logger.debug("Adding {} to {}'s [{}]".format(values, target.name, ", ".join(liblist)))
+
+  for listname in liblist:
+    already_added = getattr(target, listname) & set(values)
+    if already_added:
+      logger.debug("  ... although {} are already on target.{}".format(", ".join(already_added), listname))
+    setattr(target, listname, getattr(target, listname) | set(values))
+
 
 def _read_autogen_information(filename, tbx):
   "Read a build information override file and apply to a distribution"
@@ -406,28 +448,6 @@ def _read_autogen_information(filename, tbx):
       logger.warning("Target {}:{} has no non-generated sources".format(target.origin_path, target.name))
 
 
-  def _expand_target_lib_list(target, liblist, values):
-    """Generic function to add targets to a list(s) of targets.
-
-    If there is duplication of information then a logger debug warning will be
-    emitted.
-
-    :param target:  The target to add values to
-    :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
-    :param values:  The value(s) to add to the list(s). `str` or `[str]`
-    """
-    if isinstance(values, basestring):
-      values = [values]
-    if isinstance(liblist, basestring):
-      liblist = [liblist]
-    logger.debug("Adding {} to {}'s [{}]".format(values, target.name, ", ".join(liblist)))
-
-    for listname in liblist:
-      already_added = getattr(target, listname) & set(values)
-      if already_added:
-        logger.debug("  ... although {} are already on target.{}".format(", ".join(already_added), listname))
-      setattr(target, listname, getattr(target, listname) | set(values))
-
   # Handle any forced dependencies (e.g. things we can't tell/can't tell easily from SCons)
   for name, deps in data.get("dependencies", {}).items():
     _expand_target_lib_list(tbx.targets[name], "extra_libs", deps)
@@ -442,6 +462,13 @@ def _read_autogen_information(filename, tbx):
     else:
       _expand_target_lib_list(tbx.targets[name], ["extra_libs", "optional_extra_libs"], deps)
 
+  # Handle any otherwise optional required dependencies
+  for name, deps in data.get("required_optional_external", {}).items():
+    # Is this a target or a module?
+    if name in tbx.modules:
+      logger.warning("Not handling required optional dependencies at the module level yet. Doing nothing.")
+    else:
+      _expand_target_lib_list(tbx.targets[name], "required_optional", deps)
 
   # Handle adding of include paths to specific targets/modules
   for name, incs in data.get("target_includes", {}).items():

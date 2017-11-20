@@ -336,6 +336,9 @@ class Target(object):
     # self.required_optional_extra_libs = set()
     # Extra libs that are used if present, but optional
     self.optional_extra_libs = set()
+    # Required dependencies that are otherwise optional - e.g. external
+    # libraries that normally aren't required, but this target does.
+    self.required_optional = set()
 
   @property
   def output_filename(self):

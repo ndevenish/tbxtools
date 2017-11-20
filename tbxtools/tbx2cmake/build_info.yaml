@@ -84,11 +84,27 @@ other_generated:
   - ccp4io_adaptbx/library_f.c
   - ccp4io_adaptbx/csymlib.c
 
-# Optional dependencies; things that libraries can do without but will use
+# Targets - OR MODULES - with specific external library requirements, where the
+# build as a whole is not generally dependent on the requirement. Targets with
+# items in this list, that are missing, will be bypassed - whereas modules will
+# cause an error if they are being configured without these.
+#
+# This information is required in addition to SCons because the SCons parser
+# assumes that everything is available, and cannot distinguish an optional use from
+# a test for required.
+required_optional_external:
+  cppxfel_ext: [boost_thread, png, hdf5_hl]
+  cppxfel: [boost_thread, png, hdf5_hl] # Defined twice here because at the moment the module-
+                                        # based restriction is not implemented
+  boost_adaptbx_boost_thread_test_ext: [boost_thread]
+
+# Optional dependencies; things that targets can do without but will use
 # if present. The target will always be defined, but if this dependency is
-# present then it will be added to the target's dependencies.
-# Same as functionality for any modules listed in write_cmake.py:OPTIONAL_DEPENDS
-# Overridden if also specified in required_external.
+# present then it will be added to the target's transitive dependencies.
+#
+# 'all' is same as functionality for any modules listed in write_cmake.py:OPTIONAL_DEPENDS
+#
+# This behaviour is overridden if also specified in required_external.
 optional_dependencies:
   all: [boost_thread, openmp]
   scitbx_array_family_flex_ext: numpy
