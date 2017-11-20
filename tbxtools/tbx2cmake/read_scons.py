@@ -37,6 +37,7 @@ class LibTBXModule(object):
       with open(os.path.join(self.module_root, self.path, "libtbx_config")) as f:
         self._config = eval(f.read())
         self.required = set(self._config.get("modules_required_for_build", set()))
+        self.required |= set(self._config.get("modules_required_for_use", set()))
         self.required |= set(self._config.get("optional_modules", set()))
         # Handle aliases/multis
         if "boost" in self.required:
@@ -171,8 +172,42 @@ def _build_dependency_graph(modules):
   # Custom edges to fix problems - not sure how order is determined without this
   G.add_edge("scitbx", "omptbx")
 
-  # Validate we don't have any cycles
-  assert nx.is_directed_acyclic_graph(G), "Cycles found in dependency graph: {}".format(nx.cycles.find_cycle(G))
+  # We might potentially have dependency cycles. Try to turn this into an acyclic
+  # graph by removing edges in order of priority based on how hard the dependency
+  # requirement is.
+  while not nx.is_directed_acyclic_graph(G):
+    cycle = nx.cycles.find_cycle(G)
+    logger.debug(u"Cycle found in dependency graph: {}".format(u" → ".join(x[0] for x in cycle)))
+
+    # Find the lowest priority edge (or an edge of the lowest priority)
+    # in this cycle, and break it
+    cycle_breaking_order = [
+        "modules_required_for_build", "modules_required_for_use",
+        "optional_modules"
+    ]
+    lowest_priority, lowest_priority_edge = None, None
+    for start, end in cycle:
+      module = [x for x in modules if x.name == start][0]
+
+      edge_priority = None
+      for config_list, entries in module._config.items():
+        if end in entries and config_list in cycle_breaking_order:
+          edge_priority = cycle_breaking_order.index(config_list)
+      assert edge_priority is not None, "Could not find loop edge {} in configuration for {}".format(
+          end, start)
+      logger.debug(". Edge ({}, {}) priority = {}".format(start, end, edge_priority))
+
+      # If it's of the lowest priority then just break this. Otherwise, track it
+      if lowest_priority is None or edge_priority > lowest_priority:
+        lowest_priority, lowest_priority_edge = (edge_priority, (start, end))
+
+    assert edge_priority is not None, "Could not find ANY loop edge priorities in cycle. Fatal Error."
+
+    logger.info("Resolving cycle by removing dependency {}={} from {}".format(
+        cycle_breaking_order[lowest_priority], lowest_priority_edge[1],
+        lowest_priority_edge[0]))
+    G.remove_edge(*lowest_priority_edge)
+
 
   return G
 
