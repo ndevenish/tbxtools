@@ -49,10 +49,11 @@ DEPENDENCY_RENAMES = {
   "png": "PNG::PNG"
 }
 
-# Optional dependencies
-OPTIONAL_DEPENDS = {
-  "boost_thread", "openmp" # "GL", "GLU"
-}
+# Global optional dependencies - unless a module/target has an explicit
+# external dependency listed for these, the target will be always added
+# and then an extra test added for linking in these. Filled from the
+# build_info.yaml:optional_dependencies.all field.
+OPTIONAL_DEPENDS = set()
 
 _warned_types = set()
 
@@ -303,7 +304,7 @@ class CMLLibraryOutput(CMakeListBlock):
         # inclines.append(_append_list_to("    PRIVATE ", include_private))
       lines.append("\n".join(inclines) + " )")
 
-    extra_libs = self.target.extra_libs - OPTIONAL_DEPENDS
+    extra_libs = self.target.extra_libs - OPTIONAL_DEPENDS - self.target.optional_extra_libs
     if self.is_python_module:
       extra_libs = extra_libs - {"boost_python"}
     else:
@@ -312,7 +313,7 @@ class CMLLibraryOutput(CMakeListBlock):
       lines.append("target_link_libraries( {} {} )".format(self.target.name, " ".join(_target_rename(x) for x in extra_libs)))
 
     # Handle any optional dependencies
-    optionals = OPTIONAL_DEPENDS & set(self.target.extra_libs)
+    optionals = (OPTIONAL_DEPENDS & set(self.target.extra_libs)) | self.target.optional_extra_libs
     if optionals:
       for option in optionals:
         lines.extend([
@@ -403,19 +404,43 @@ def _read_autogen_information(filename, tbx):
     if not target.sources:
       logger.warning("Target {}:{} has no non-generated sources".format(target.origin_path, target.name))
 
+
+  def _expand_target_lib_list(target, liblist, values):
+    """Generic function to add targets to a list(s) of targets.
+
+    If there is duplication of information then a logger debug warning will be
+    emitted.
+
+    :param target:  The target to add values to
+    :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
+    :param values:  The value(s) to add to the list(s). `str` or `[str]`
+    """
+    if isinstance(values, basestring):
+      values = [values]
+    if isinstance(liblist, basestring):
+      liblist = [liblist]
+    logger.debug("Adding {} to {}'s [{}]".format(values, target.name, ", ".join(liblist)))
+
+    for listname in liblist:
+      already_added = getattr(target, listname) & set(values)
+      if already_added:
+        logger.debug("  ... although {} are already on target.{}".format(", ".join(already_added), listname))
+      setattr(target, listname, getattr(target, listname) | set(values))
+
   # Handle any forced dependencies (e.g. things we can't tell/can't tell easily from SCons)
   for name, deps in data.get("dependencies", {}).items():
-    if isinstance(deps, basestring):
-      deps = [deps]
-    # find this target
-    target = tbx.targets[name]
-    logger.debug("Adding {} to {}".format(", ".join(deps), target.name))
-    # Check if any of these aren't required
-    already_added = target.extra_libs & set(deps)
-    if already_added:
-      logger.debug("... although {} are already on target".format(", ".join(already_added)))
-    # Add them all to the lib list
-    target.extra_libs |= set(deps)
+    _expand_target_lib_list(tbx.targets[name], "extra_libs", deps)
+
+  # Handle any optional dependencies
+  for name, deps in data.get("optional_dependencies", {}).items():
+    # If name is "all", then just expand the global list
+    if name == "all":
+      global OPTIONAL_DEPENDS
+      OPTIONAL_DEPENDS |= set(deps) if not isinstance(deps, basestring) else set([deps])
+      logger.debug("Expanding global optional dependency list with: {}".format(deps))
+    else:
+      _expand_target_lib_list(tbx.targets[name], ["extra_libs", "optional_extra_libs"], deps)
+
 
   # Handle adding of include paths to specific targets/modules
   for name, incs in data.get("target_includes", {}).items():

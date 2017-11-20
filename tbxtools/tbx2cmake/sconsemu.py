@@ -333,6 +333,10 @@ class Target(object):
     self.module = None
     self.include_paths = set()
 
+    # self.required_optional_extra_libs = set()
+    # Extra libs that are used if present, but optional
+    self.optional_extra_libs = set()
+
   @property
   def output_filename(self):
     return self.prefix + self.filename
