@@ -143,6 +143,8 @@ class CMakeLists(object):
           continue
         if target.type in {Target.Type.SHARED, Target.Type.STATIC, Target.Type.MODULE}:
           blocks.append(CMLLibraryOutput(target))
+        elif target.type in {Target.Type.PROGRAM}:
+          blocks.append(CMLProgramOutput(target))
         else:
           # Warn about target types not yet handled
           if not target.type in _warned_types:
@@ -247,21 +249,21 @@ class CMLLibraryOutput(CMakeListBlock):
       return "SHARED"
     elif self.target.type == self.target.Type.STATIC:
       return "STATIC"
+    else:
+      raise RuntimeError("Unrecognised library type {}".format(self.target.type))
 
   @property
   def is_python_module(self):
     return self.target.type == Target.Type.MODULE and "boost_python" in self.target.extra_libs
 
-  def __str__(self):
-    # if self.target.name == "cctbx_array_family_flex_ext":
-    #   import pdb
-    #   pdb.set_trace()
-
+  def _get_target_add_string(self):
     if self.is_python_module:
-      add_command = "add_python_library( {} "
+      return "add_python_library( {} "
     else:
-      add_command = "add_library( {} {} "
+      return "add_library( {} {} "
 
+  def __str__(self):
+    add_command = self._get_target_add_string()
     add_lib = add_command.format(self.target.name, self.typename)
 
     # Work out if we can put all the sources on one line
@@ -269,15 +271,10 @@ class CMLLibraryOutput(CMakeListBlock):
 
     lines.append(_append_list_to(add_lib, self.target.sources, append=(" )", " )")))
 
-    # lines.extend()
-    # if len(add_lib + " ".join(self.target.sources)) + 2 <= 78:
-    #   lines.append(add_lib + " ".join(self.target.sources) + " )")
-    # else:
-    #   lines.append(add_lib)
-    #   lines.extend(["    " + x for x in self.target.sources])
-    #   lines.append(")")
-
-    assert self.target.name == self.target.filename
+    # If the target has been renamed for some reason, we need to handle that here
+    if self.target.name != self.target.filename:
+      lines.append("set_target_properties({} PROPERTIES OUTPUT_NAME {})".format(
+          self.target.name, self.target.filename))
 
     # Add generated sources
     if self.target.generated_sources:
@@ -353,6 +350,26 @@ class CMLLibraryOutput(CMakeListBlock):
       lines = cond_lines
 
     return "\n".join(lines)
+
+class CMLProgramOutput(CMLLibraryOutput):
+
+  @property
+  def typename(self):
+    assert self.target.type == self.target.Type.PROGRAM
+    return "PROGRAM"
+
+  def _get_target_add_string(self):
+    return "add_executable( {} "
+
+  def __str__(self):
+    # If we have no
+    if not self.target.sources and self.target.generated_sources:
+      logger.warn("{} {} has no non-generated sources. Skipping.".format(
+          self.target.type, self.target.name))
+      return ""
+
+    return super(CMLProgramOutput, self).__str__()
+
 
 
 
