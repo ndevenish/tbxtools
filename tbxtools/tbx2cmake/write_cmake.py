@@ -144,6 +144,7 @@ class CMakeLists(object):
         if target.type in {Target.Type.SHARED, Target.Type.STATIC, Target.Type.MODULE}:
           blocks.append(CMLLibraryOutput(target))
         else:
+          # Warn about target types not yet handled
           if not target.type in _warned_types:
             _warned_types.add(target.type)
             logger.warn("Not handling {} yet".format(target.type))
