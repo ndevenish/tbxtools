@@ -262,6 +262,20 @@ class CMLLibraryOutput(CMakeListBlock):
     else:
       return "add_library( {} {} "
 
+  def _get_target_location_setter(self):
+    """Returns the lines to set the location for the current target.
+    Passed info to format is of form (name, destination).
+    """
+
+    # Slightly messy - but what the object classes as can be vague, depending on platform
+    # See https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html#output-artifacts
+    return """set_target_properties( {0:} PROPERTIES
+  ARCHIVE_OUTPUT_DIRECTORY "{1:}"
+  LIBRARY_OUTPUT_DIRECTORY "{1:}"
+  RUNTIME_OUTPUT_DIRECTORY "{1:}"
+)"""
+
+
   def __str__(self):
     add_command = self._get_target_add_string()
     add_lib = add_command.format(self.target.name, self.typename)
@@ -273,8 +287,19 @@ class CMLLibraryOutput(CMakeListBlock):
 
     # If the target has been renamed for some reason, we need to handle that here
     if self.target.name != self.target.filename:
-      lines.append("set_target_properties({} PROPERTIES OUTPUT_NAME {})".format(
+      lines.append("set_target_properties( {} PROPERTIES OUTPUT_NAME {})".format(
           self.target.name, self.target.filename))
+
+    # Handle non-standard output paths
+    if not self.target.output_path in {"#/lib", ""}:
+      # print ("Output path for {}: {}".format(self.target.name, self.target.output_path))
+      if self.target.output_path.startswith("#"):
+        output_path = "${CMAKE_BINARY_DIR}/"+self.target.output_path[1:]
+      else:
+        output_path = self.target.output_path
+      # print ".   -> ", output_path
+      # Delegate the actual lines used here so we can be as clean as possible
+      lines.append(self._get_target_location_setter().format(self.target.name, output_path))
 
     # Add generated sources
     if self.target.generated_sources:
@@ -360,6 +385,10 @@ class CMLProgramOutput(CMLLibraryOutput):
 
   def _get_target_add_string(self):
     return "add_executable( {} "
+
+  def _get_target_location_setter(self):
+    # Executables, we always know what type they are
+    return """set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")"""
 
   def __str__(self):
     # If we have no
