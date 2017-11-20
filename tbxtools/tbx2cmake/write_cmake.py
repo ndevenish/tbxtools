@@ -39,12 +39,14 @@ DEPENDENCY_RENAMES = {
   "boost_thread": "Boost::thread",
   "hdf5_c": "HDF5::C",
   "hdf5": "HDF5::HDF5",
+  "hdf5_hl": "HDF5::HL",
   "boost": "Boost::boost",
   "boost_numpy": "Boost::numpy",
   "eigen": "Eigen::Eigen",
   "openmp": "OpenMP::OpenMP_CXX",
   "pcre": "PCRE::PCRE",
   "numpy": "Python::Numpy",
+  "png": "PNG::PNG"
 }
 
 # Optional dependencies
