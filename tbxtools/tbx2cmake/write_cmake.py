@@ -505,7 +505,7 @@ def _read_autogen_information(filename, tbx):
       global OPTIONAL_DEPENDS
       OPTIONAL_DEPENDS |= set(deps) if not isinstance(deps, basestring) else set([deps])
       logger.debug("Expanding global optional dependency list with: {}".format(deps))
-    else:
+    elif name in tbx.targets:
       _expand_target_lib_list(tbx.targets[name], ["extra_libs", "optional_extra_libs"], deps)
 
   # Handle any otherwise optional required dependencies
@@ -517,7 +517,7 @@ def _read_autogen_information(filename, tbx):
         _expand_target_lib_list(target, "required_optional", deps)
         # import pdb
         # pdb.set_trace()
-    else:
+    elif name in tbx.targets:
       _expand_target_lib_list(tbx.targets[name], "required_optional", deps)
 
   # Handle adding of include paths to specific targets/modules
