@@ -351,7 +351,7 @@ def read_distribution(module_path):
   logger.info("{} Targets remaining".format(len(tbx.targets)))
 
   # Check that we know and expect all the external libraries
-  expected_external_libs = {"tiff", "boost_python", "GL", "GLU", "hdf5", "boost_numpy", "png", "hdf5_hl"}
+  expected_external_libs = {"tiff", "boost_python", "GL", "GLU", "hdf5", "boost_numpy", "png", "hdf5_hl", "gtest", "gtest_main"}
   assert not external_libs - expected_external_libs, "Unexpected extra external libs: {}".format(external_libs - expected_external_libs)
 
   return tbx

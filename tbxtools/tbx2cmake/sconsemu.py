@@ -98,6 +98,9 @@ class SConsConfigurationContext(object):
     # Looks to see if the fftw3 library is importable
     elif code == "#include <fftw3.h>":
       return 1
+    # I may have been known to test this on occasion
+    elif code == "#include <gtest/gtest.h>":
+      return 1
 
     assert False, "Not recognised TryCompile"
 
@@ -286,8 +289,8 @@ class SConsEnvironment(object):
 
     # print("Static lib: {} (relative to {})\n     sources: {}".format(target, self.runner._current_sconscript, source))
 
-  def Program(self, target, source):
-    self._create_target(Target.Type.PROGRAM, target, source)
+  def Program(self, target, source, **kwargs):
+    self._create_target(Target.Type.PROGRAM, target, source, **kwargs)
     # print("Program: {} (relative to {})\n     sources: {}".format(target, self.runner._current_sconscript, source))
     # Used at least once
     return [ProgramReturn(target)]

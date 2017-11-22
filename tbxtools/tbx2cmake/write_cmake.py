@@ -46,7 +46,9 @@ DEPENDENCY_RENAMES = {
   "openmp": "OpenMP::OpenMP_CXX",
   "pcre": "PCRE::PCRE",
   "numpy": "Python::Numpy",
-  "png": "PNG::PNG"
+  "png": "PNG::PNG",
+  "gtest": "GTest::GTest",
+  "gtest_main": "GTest::Main",
 }
 
 # Global optional dependencies - unless a module/target has an explicit
@@ -54,6 +56,11 @@ DEPENDENCY_RENAMES = {
 # and then an extra test added for linking in these. Filled from the
 # build_info.yaml:optional_dependencies.all field.
 OPTIONAL_DEPENDS = set()
+
+# Global required optionals - dependencies that are optional globally,
+# but any specific target that requests it must be skipped if this
+# dependency is missing.
+REQUIRED_OPTIONAL = set()
 
 _warned_types = set()
 
@@ -359,16 +366,17 @@ class CMLLibraryOutput(CMakeListBlock):
 
     # Required optional handling: Libraries that are otherwise optional, but this
     # target has a hard dependency on.
-    if self.target.required_optional:
+    if self.target.required_optional or (self.target.extra_libs & REQUIRED_OPTIONAL):
       # Ensure we have properly split lines before indenting
       lines = "\n".join(lines).splitlines()
+      combined_requirements = self.target.required_optional | (self.target.extra_libs & REQUIRED_OPTIONAL)
       # cond_lines = []
-      if len(self.target.required_optional) == 1:
+      if len(combined_requirements) == 1:
         comment_message = "# {} requires this normally optional dependency".format(self.target.name)
       else:
         comment_message = "# {} requires these normally optional dependencies".format(self.target.name)
 
-      conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in self.target.required_optional))
+      conditions = " AND ".join(("TARGET {}".format(_target_rename(x)) for x in combined_requirements))
       cond_lines = [comment_message,"if({})".format(conditions)]
       cond_lines.extend("  " + x for x in lines)
       cond_lines.append("endif()")
@@ -510,8 +518,12 @@ def _read_autogen_information(filename, tbx):
 
   # Handle any otherwise optional required dependencies
   for name, deps in data.get("required_optional_external", {}).items():
+    if name == "all":
+      global REQUIRED_OPTIONAL
+      REQUIRED_OPTIONAL |= set(deps) if not isinstance(deps, basestring) else set([deps])
+      logger.debug("Expanding global required optional dependency list with: {}".format(deps))
     # Is this a target or a module?
-    if name in tbx.modules:
+    elif name in tbx.modules:
       logger.warning("Given module-level dependency testing, but this isn't properly handled yet. Setting all targets within modules.")
       for target in tbx.modules[name].targets:
         _expand_target_lib_list(target, "required_optional", deps)
