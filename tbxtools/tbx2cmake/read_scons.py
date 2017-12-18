@@ -330,6 +330,8 @@ def read_distribution(module_path):
     if src in KNOWN_IGNORABLE_SHARED:
       target.sources.extend(src)
       target.shared_sources = []
+    else:
+      logger.warn("Source {} in target {} not a recognised shared source".format(src, repr(target)))
 
   # Check assumptions about all the targets
   assert all(x.module for x in tbx.targets), "Not all targets belong to a module"
