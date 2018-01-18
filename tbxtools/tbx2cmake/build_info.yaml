@@ -33,6 +33,7 @@ dependencies:
   smtbx_refinement_constraints: scitbx
   boost_adaptbx_boost_thread_test_ext: boost_thread
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
+  dials_algorithms_integration_parallel_integrator_ext: boost_thread # Uses, but doesn't declare
 
 
 # Change the root location of certain libraries. This handles problems
@@ -98,6 +99,7 @@ required_optional_external:
   all: [gtest]
   cppxfel: [boost_thread, png, hdf5_hl]
   boost_adaptbx_boost_thread_test_ext: [boost_thread]
+  dials_algorithms_integration_parallel_integrator_ext: [boost_thread]
   gltbx: [GL, GLU]
 
 # Optional dependencies; things that targets can do without but will use
