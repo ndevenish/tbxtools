@@ -320,7 +320,7 @@ def read_distribution(module_path):
     ['numpy_bridge.cpp'],
     ['lbfgs_fem.cpp'],
     ['boost_python/outlier_helpers.cc'],
-    ['nanoBragg_ext.cpp', 'nanoBragg.cpp', 'nanoBragg_nks.cpp']
+    ['nanoBragg_ext.cpp', 'nanoBragg.cpp']
   ]
   for target in [x for x in tbx.targets if x.shared_sources]:
     assert len(target.shared_sources) == 1
