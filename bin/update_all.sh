@@ -39,8 +39,10 @@ for dir in $subdirs; do
 
     cd ${MODULE_ROOT}/$dir
     if [[ $(git rev-parse --abbrev-ref HEAD) != "master" ]]; then
+      git fetch || true;
       fail $name "Not on master branch. Not attempting update."
     elif ! git diff-index --quiet HEAD --; then
+      git fetch || true;
       fail $name "Changes to working directory; cannot update."
     else
       if ! git pull --ff-only origin; then
