@@ -196,10 +196,12 @@ class CMLModuleRootBlock(CMakeListBlock):
     assert len(module_target) <= 1
     if module_target:
       # We are a real, compiled library
-      lines.append(str(CMLLibraryOutput(module_target[0])))
+      lines.append(str(CMLModuleRootLibraryOutput(module_target[0])))
     else:
       # We're just an interface library
-      lines.append("add_library( {} INTERFACE )".format(module.name))
+
+      # Write out the add
+      lines.append("add_tbx_module( {} INTERFACE )".format(module.name))
       include_paths = {"${CMAKE_CURRENT_SOURCE_DIR}/.."}
 
       # Handle any replacements in this path
@@ -383,6 +385,10 @@ class CMLLibraryOutput(CMakeListBlock):
       lines = cond_lines
 
     return "\n".join(lines)
+
+class CMLModuleRootLibraryOutput(CMLLibraryOutput):
+  def _get_target_add_string(self):
+    return "add_tbx_module( {} "
 
 class CMLProgramOutput(CMLLibraryOutput):
 
