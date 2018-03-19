@@ -1,7 +1,10 @@
 # tbxtools
  
-A unified repository of libtbx-like distribution handling and
-transformation tools.
+Originally intended as a unified repository of libtbx-like distribution 
+handling and transformation tools, this is somewhat evolving into a
+dumping ground for useful distribution-related tools.
+
+Originally:
 
 After writing several projects with common handling infrastructure,
 and having to manage differences in data model between them (as well
