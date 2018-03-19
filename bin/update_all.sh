@@ -33,8 +33,8 @@ if ! subdirs=$(find . -type d -depth 1 2>/dev/null); then
 fi
 
 for dir in $subdirs; do
+  name=$(basename $dir)
   if [[ -d ${MODULE_ROOT}/$dir/.git ]]; then
-    name=$(basename $dir)
     echo "Updating $dir "
 
     cd ${MODULE_ROOT}/$dir
@@ -51,12 +51,14 @@ for dir in $subdirs; do
     fi
     echo ""
   fi
-  if [[ -d $dir/.svn ]]; then
+  if [[ -d ${MODULE_ROOT}/$dir/.svn ]]; then
     echo "Updating $dir (svn)"
-    (
-      cd $dir
-      svn update
-    )
+    cd ${MODULE_ROOT}/$dir
+    svn update
+    exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+      fail $name "svn exited with status $exit_code"
+    fi
     echo ""
   fi
 done
