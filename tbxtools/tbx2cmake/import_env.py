@@ -253,6 +253,9 @@ def do_import_patching(dist_path):
   numpy = new_module("numpy")
   numpy.get_include = lambda : "NUMPY_INCLUDE"
 
+  # In order to avoid libtbx.env_etc dependency, fable's SConscript now imports fable...
+  fable = new_module("fable")
+  fable.__path__ = "DISTPATH[fable]/"
 
 # def monkeypatched(object, name, patch):
 #   """ Temporarily monkeypatches an object. """
