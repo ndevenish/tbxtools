@@ -4,6 +4,7 @@ import enum
 from libtbx import phil
 import numpy
 import re
+from math import *
 
 
 class Flags(enum.IntEnum):
@@ -179,7 +180,11 @@ def _reftable_repr(self):
 # re_remove_dtype
 def _patch_flex(flex, dtype, shape=None, ndim=1):
   import numpy
-  flex.__repr__ = lambda x: re_remove_dtype.sub("", numpy.array_repr(x))
+  def _do_repr(x):
+    if x.size() == 0:
+      return type(x).__name__ + "([])"
+    return re_remove_dtype.sub("", numpy.array_repr(x))
+  flex.__repr__ = _do_repr
   if shape is None:
     flex.shape = property(lambda x: (len(x), ))
   else:
