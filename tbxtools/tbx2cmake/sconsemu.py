@@ -389,6 +389,12 @@ class _fakeFile(object):
     if "csymlib.c" in self.filename or caller == "replace_printf":
       return ""
 
+  def __enter__(self):
+    return self
+
+  def __exit__(self, type, value, traceback):
+    pass
+
 def _wrappedOpen(file, mode=None):
   """A Fake open command to trap reading files in SConscripts"""
   return _fakeFile(file)
