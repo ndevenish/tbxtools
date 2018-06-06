@@ -25,8 +25,8 @@ MODULE_ROOT=$(pwd)
 not_updated=""
 
 # Find the subdirectories; for both GNU and BSD find variants
-if ! subdirs=$(find . -type d -depth 1 2>/dev/null); then
-  if ! subdirs=$(find . -maxdepth 1 -type d 2>/dev/null); then
+if ! subdirs=$(find -L . -type d -depth 1 2>/dev/null); then
+  if ! subdirs=$(find -L . -maxdepth 1 -type d 2>/dev/null); then
     echo "Error: Could not call 'find' in a platform-valid way."
     exit 1
   fi
@@ -35,9 +35,16 @@ fi
 for dir in $subdirs; do
   name=$(basename $dir)
   if [[ -d ${MODULE_ROOT}/$dir/.git ]]; then
-    echo "Updating $dir "
-
     cd ${MODULE_ROOT}/$dir
+    # Detect if this is a git-svn repository
+    if [[ -d .git/svn && -n "$(ls -A .git/svn/)" ]]; then
+      update_command='git svn rebase'
+      echo "Updating $dir (git-svn)"
+    else
+      echo "Updating $dir "
+      update_command='git pull --ff-only origin'
+    fi
+    # Conditions for trying are the same for normal/svn
     if [[ $(git rev-parse --abbrev-ref HEAD) != "master" ]]; then
       git fetch || true;
       fail $name "Not on master branch. Not attempting update."
@@ -45,13 +52,13 @@ for dir in $subdirs; do
       git fetch || true;
       fail $name "Changes to working directory; cannot update."
     else
-      if ! git pull --ff-only origin; then
+      if ! ${update_command}; then
         fail $name "git command failed."
       fi
     fi
+
     echo ""
-  fi
-  if [[ -d ${MODULE_ROOT}/$dir/.svn ]]; then
+  elif [[ -d ${MODULE_ROOT}/$dir/.svn ]]; then
     echo "Updating $dir (svn)"
     cd ${MODULE_ROOT}/$dir
     svn update
