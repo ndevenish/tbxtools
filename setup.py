@@ -15,7 +15,7 @@ setup(
           'tbx2cmake=tbxtools.tbx2cmake.write_cmake:main'
         ],
     },
-    install_requires=["enum34", "docopt", "networkx<2", "pyyaml", "mock"],
+    install_requires=["enum34", "docopt", "networkx", "pyyaml", "mock"],
     package_data={
       'tbxtools.tbx2cmake': ['build_info.yaml'],
     },
