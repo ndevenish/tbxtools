@@ -166,6 +166,8 @@ def _tbx_darwin_shlinkcom(env_etc, env, lo, dylib):
     return
   if "libboost_numpy.lo" in lo:
     return
+  if "libboost_filesystem.lo" in lo:
+    return
   _wtf(env_etc, env, lo, dylib)
 
 class EasyRunResult(object):
