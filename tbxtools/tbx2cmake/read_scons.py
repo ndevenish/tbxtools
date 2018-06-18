@@ -172,6 +172,20 @@ def _build_dependency_graph(modules):
   # Custom edges to fix problems - not sure how order is determined without this
   G.add_edge("scitbx", "omptbx")
 
+  # Handle adaptbx modules
+  # An adaptbx module will usually(?) have a corresponding module that it's
+  # generating the code/imports for. Unfortunately, when other modules specify
+  # a dependency on "X" they often mean/require "X_adaptbx". libtbx seems to treat
+  # these modules as co-dependents.
+  #
+  # For every dependency on an X where X_adaptbx exists, also add a dependecy to
+  # X_adaptbx
+  for src, dst in list(G.edges):
+    adaptbx = dst + "_adaptbx"
+    if adaptbx in G.nodes and not (src, adaptbx) in G.edges:
+      logger.debug("Adding extra adaptbx edge %s, %s", src, adaptbx)
+      G.add_edge(src, adaptbx)
+
   # We might potentially have dependency cycles. Try to turn this into an acyclic
   # graph by removing edges in order of priority based on how hard the dependency
   # requirement is.
