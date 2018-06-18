@@ -143,7 +143,12 @@ class TBXDistribution(object):
 
   @property
   def all_generated(self):
-    return set(self.other_generated) | set(itertools.chain(*(x.generated_sources for x in self._modules.values())))
+    return {
+        os.path.normpath(x)
+        for x in set(self.other_generated) | set(
+            itertools.chain(*(x.generated_sources
+                              for x in self._modules.values())))
+    }
 
 
 def _build_dependency_graph(modules):
