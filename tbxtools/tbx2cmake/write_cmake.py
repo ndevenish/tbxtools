@@ -456,13 +456,16 @@ def _read_autogen_information(filename, tbx):
   # Add the generated sources information
   tbx.other_generated = data.get("other_generated", [])
 
+  # Convert the 'all generated' path list to native filesystem syntax
+  all_generated = {os.path.normpath(x) for x in tbx.all_generated}
+
   # Find all targets that use repository-lookup sources
   for target in tbx.targets:
     lookup_sources = [x for x in target.sources if x.startswith("#")]
     unknown = set()
     for source in lookup_sources:
       # If the source is generated, then mark it so and it'll be read from the build dir
-      if source[1:] in tbx.all_generated:
+      if os.path.normpath(source[1:]) in all_generated:
         target.sources.remove(source)
         target.generated_sources.add(source[1:])
       else:
@@ -494,7 +497,7 @@ def _read_autogen_information(filename, tbx):
         # Look in the generated sources list
         relpath = os.path.relpath(target.origin_path, target.module.path)
         genpath = os.path.normpath(os.path.join(target.module.name, relpath, source))
-        assert genpath in tbx.all_generated, "Could not find missing source {}:{}".format(target.name, source)
+        assert genpath in all_generated, "Could not find missing source {}:{}".format(target.name, source)
           # print("   Found generated at {}".format(genpath))
         target.sources.remove(source)
         target.generated_sources.add(genpath)
