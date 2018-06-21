@@ -430,44 +430,34 @@ class _fake_system_env(object):
     self.env = env
     self._orig = defaultdict(dict)
 
-  _to_rewrite = {
-    os: {"mkdir", "name", "path"},
-    os.path: {"isdir", "isfile", "exists"},
-    sys: {"platform"}
-  }
+  _to_rewrite = [
+    (os, {"mkdir", "name", "path"}),
+    (posixpath, {"isdir", "isfile", "exists"}),
+    (sys, {"platform"})
+  ]
 
   def suspend(self):
     return _undo_fake_system_env(self)
 
   def __enter__(self):
     assert _fake_system_env.current is None
-    # print("Entering fake env")
+    # logger.debug("Entering fake OS environment")
     # traceback.print_stack()
     _fake_system_env.current = self
-    for module, names in self._to_rewrite.items():
+    for module, names in self._to_rewrite:
       for name in names:
         self._orig[module][name] = getattr(module, name)
         setattr(module, name, getattr(self, "_fake_{}".format(name)))
 
-    # for name in {"mkdir", "name"}:
-    #   self._os[name] = getattr(os, name)
-    #   setattr(os, name, getattr(self, "_fake_{}".format(name)))
-    
-    # for name in {"isdir", "isfile", "exists"}:
-    #   self._ospath[name] = getattr(os.path, name)
-    #   setattr(os.path, name, getattr(self, "_fake_{}".format(name)))
-
-    # for name in {"isdir", "isfile", "exists"}:
-    #   self._ospath[name] = getattr(os.path, name)
-    #   setattr(os.path, name, getattr(self, "_fake_{}".format(name)))
-
-
   def __exit__ (self, type, value, tb):
-    # print("Exiting fake env")
+    # logger.debug("Exiting fake OS environment")
     # traceback.print_stack()
-    for module, entries in self._orig.items():
-      for name, value in entries.items():
+    # Reset these values in reverse order
+    for module, names in reversed(self._to_rewrite):
+      for name in names:
+        value = self._orig[module][name]
         setattr(module, name, value)
+    self._orig.clear()
     _fake_system_env.current = None
 
   _fake_name = "posix"
