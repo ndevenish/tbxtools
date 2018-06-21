@@ -16,7 +16,7 @@ setup(
         ],
     },
     install_requires=['enum34;python_version<"3"',
-      "docopt", "networkx~=2.1", "pyyaml", "mock",],
+      "docopt", "networkx~=2.1", "pyyaml", "mock","pathlib2"],
     package_data={
       'tbxtools.tbx2cmake': ['build_info.yaml'],
     },

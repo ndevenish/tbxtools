@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import os
+import posixpath
 import sys
 import inspect
 import copy
@@ -9,6 +10,10 @@ import contextlib
 import fnmatch
 import traceback
 from collections import defaultdict
+
+# Since we swizzle the OS definitions, decide "local" at import time
+from pathlib import PurePosixPath, WindowsPath, PosixPath
+Path = WindowsPath if (os.name == "nt") else PosixPath
 
 from enum import Enum
 
@@ -216,8 +221,7 @@ class SConsEnvironment(object):
     if target.startswith("#lib"):
       target = "#/lib" + target[4:]
     target = Target(targettype, output_name=target, sources=source)
-    target.origin_path = os.path.dirname(os.path.relpath(self.runner._current_sconscript, self.runner.dist_path))
-
+    target.origin_path = self.runner._current_sconscript.relative_to(PurePosixPath(self.runner.dist_path)).parent.as_posix()
     target.env = self.Clone()
     target.env.Append(**kwargs)
 
@@ -427,7 +431,7 @@ class _fake_system_env(object):
     self._orig = defaultdict(dict)
 
   _to_rewrite = {
-    os: {"mkdir", "name"},
+    os: {"mkdir", "name", "path"},
     os.path: {"isdir", "isfile", "exists"},
     sys: {"platform"}
   }
@@ -468,7 +472,7 @@ class _fake_system_env(object):
 
   _fake_name = "posix"
   _fake_platform = "linux2"
-  
+  _fake_path = posixpath
 
   def _fake_mkdir(self, path, mode):
     assert path.startswith("UNDERBUILD")
@@ -546,10 +550,10 @@ class SconsEmulator(object):
 
     self._fake_env = _fake_system_env(self)
     with self._fake_env:
-      self.parse_sconscript(scons)
+      self.parse_sconscript(Path(scons))
 
   def sconscript_command(self, name, exports=None):
-    newpath = os.path.join(os.path.dirname(self._current_sconscript), name)
+    newpath = self._current_sconscript.parent / PurePosixPath(name)
     logger.debug("Loading sub-sconscript {}".format(newpath))
     self.parse_sconscript(newpath, custom_exports=exports)
     logger.debug("Returning to sconscript {}".format(self._current_sconscript))
@@ -596,7 +600,7 @@ class SconsEmulator(object):
     module.inject(inj)
     # Handle the stack of Sconscript processing
     prev_scons = self._current_sconscript
-    self._current_sconscript = filename
+    self._current_sconscript = Path(filename)
     # Now execute the script
     module.execute()
     self._current_sconscript = prev_scons

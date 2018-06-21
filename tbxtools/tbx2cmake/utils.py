@@ -34,11 +34,13 @@ class InjectableModule(object):
   Allows injecting whilst the module is running e.g. via callbacks.
   """
   def __init__(self, module_path):
-    path, module_filename = os.path.split(module_path)
-    module_name, ext = os.path.splitext(module_filename)
-    module = imp.new_module(module_name)
-    module.__file__ = module_path
-    with open(module_path) as f:
+    """Create an InjectableModule.
+
+    :param pathlib.Path module_path: The python script to load
+    """
+    module = imp.new_module(module_path.stem)
+    module.__file__ = str(module_path.parent)
+    with module_path.open() as f:
       self.bytecode = compile(f.read(), str(module_path), "exec")
     self.module = module
 
