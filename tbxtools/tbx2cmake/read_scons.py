@@ -10,6 +10,7 @@ import networkx as nx
 import collections
 import itertools
 import yaml
+from pathlib import PurePosixPath, Path
 
 from .utils import return_as_list
 from .sconsemu import SconsEmulator, Target
@@ -300,7 +301,9 @@ def read_distribution(module_path):
   tbx = read_module_path_sconscripts(module_path)
 
   # Remove the boost targets
-  boost_target_names = {"boost_thread", "boost_system", "boost_python", "boost_chrono", "boost_numpy"}
+  boost_target_names = {"boost_thread", "boost_system", "boost_python",
+                        "boost_chrono", "boost_numpy",
+                        "boost_filesystem", "libboost_filesystem"}
   boost_targets = {x for x in tbx.targets if x.name in boost_target_names}
   for target in boost_targets:
     logger.info("Removing target {} (in {})".format(target.name, target.module.name))
@@ -361,7 +364,7 @@ def read_distribution(module_path):
   # assert all("GL" in x.extra_libs for x in tbx.targets if "GLU" in x.extra_libs), "Not all GL has GLU"
 
   # For all targets named directly after a module, ensure it's in the module root
-  assert all([x.origin_path == tbx.modules[x.name].path for x in tbx.targets if x.name in tbx.modules])
+  assert all([PurePosixPath(x.origin_path) == PurePosixPath(Path(tbx.modules[x.name].path)) for x in tbx.targets if x.name in tbx.modules])
 
   # Print some information out
   all_libs = set(itertools.chain(*[x.extra_libs for x in tbx.targets]))
