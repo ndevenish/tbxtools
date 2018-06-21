@@ -568,10 +568,9 @@ class SconsEmulator(object):
       module.inject(inj)
 
     def _env_glob(path):
-      globpath = os.path.join(os.path.dirname(filename), path)
-      results = glob.glob(globpath)
-      ldir = len(os.path.dirname(filename))
-      return [x[ldir+1:] for x in results]
+      """Replace SCons' Glob environmental function"""
+      results = list(filename.parent.glob(path))
+      return [x.relative_to(filename.parent).as_posix() for x in results]
 
     def _new_env(*args, **kwargs):
       return SConsEnvironment(self, *args, **kwargs)
