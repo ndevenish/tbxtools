@@ -20,6 +20,8 @@ import sys
 import os
 import logging
 import pkgutil
+from pathlib import PurePosixPath, Path
+import posixpath
 
 from docopt import docopt
 import yaml
@@ -456,28 +458,26 @@ def _read_autogen_information(filename, tbx):
   # Add the generated sources information
   tbx.other_generated = data.get("other_generated", [])
 
-  # Convert the 'all generated' path list to native filesystem syntax
-  all_generated = {os.path.normpath(x) for x in tbx.all_generated}
-
   # Find all targets that use repository-lookup sources
   for target in tbx.targets:
     lookup_sources = [x for x in target.sources if x.startswith("#")]
     unknown = set()
     for source in lookup_sources:
       # If the source is generated, then mark it so and it'll be read from the build dir
-      if os.path.normpath(source[1:]) in all_generated:
+      if source[1:] in tbx.all_generated:
         target.sources.remove(source)
         target.generated_sources.add(source[1:])
       else:
         # This might be a general-lookup source. Find the actual directory.
+        source_fs = str(Path(PurePosixPath(source[1:])))
         repositories = ["", "cctbx_project"]
-        for repo in repositories:
-          full_path = os.path.join(tbx.module_path, repo, source[1:])
-          if os.path.isfile(full_path):
+        for repo in (Path(x) for x in repositories):
+          full_path = Path(tbx.module_path) / repo / source_fs
+          if full_path.is_file():
             # print("Found {} in {}".format(source, repo))
             # Change the sources list to use a relative reference to the target path
             target.sources.remove(source)
-            relpath = os.path.relpath(os.path.join(repo, source[1:]), target.origin_path)
+            relpath = posixpath.relpath((repo / source_fs).as_posix(), target.origin_path)
             target.sources.append(relpath)
             # print("  rewriting to {}".format(relpath))
             break
@@ -495,9 +495,9 @@ def _read_autogen_information(filename, tbx):
       if not os.path.isfile(os.path.join(tbx.module_path, target.origin_path, source)):
         # print("Could not find {}:{}".format(target.name, source))
         # Look in the generated sources list
-        relpath = os.path.relpath(target.origin_path, target.module.path)
-        genpath = os.path.normpath(os.path.join(target.module.name, relpath, source))
-        assert genpath in all_generated, "Could not find missing source {}:{}".format(target.name, source)
+        relpath = posixpath.relpath(target.origin_path, Path(target.module.path).as_posix())
+        genpath = posixpath.normpath(posixpath.join(target.module.name, relpath, source))
+        assert genpath in tbx.all_generated, "Could not find missing source {}:{}".format(target.name, source)
           # print("   Found generated at {}".format(genpath))
         target.sources.remove(source)
         target.generated_sources.add(genpath)
