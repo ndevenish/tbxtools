@@ -12,8 +12,10 @@ BOLD=$(tput bold)
 NC=$(tput sgr0)
 
 printf "Finding repos...."
-repos=$(find -L . -name ".git" -type d | xargs dirname)
-printf "$(echo \"$repos\" | wc -w) found\n"
+repo_dirs=$(find -L . -name ".git" -type d)
+count=$(echo "$repo_dirs" | wc -l)
+printf "$count found\n"
+repos=$(echo $repo_dirs | xargs dirname)
 
 get_remote_diff_log() {
   git log --branches --not --remotes --oneline --decorate --graph --color=always
