@@ -13,7 +13,7 @@ NC=$(tput sgr0)
 
 printf "Finding repos...."
 repos=$(find -L . -name ".git" -type d | xargs dirname)
-printf '$(echo "$repos" | wc -l) found\n'
+printf "$(echo $repos | wc -l) found\n"
 
 get_remote_diff_log() {
   git log --branches --not --remotes --oneline --decorate --graph --color=always
