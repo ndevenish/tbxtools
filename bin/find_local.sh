@@ -43,7 +43,7 @@ printf "${count//[[:space:]]/} found\n"
 repos=$(echo $repo_dirs | xargs -n 1 dirname)
 
 get_remote_diff_log() {
-  git log --branches --not --remotes --oneline --decorate --graph --color=always
+  git --no-pager log --branches --not --remotes --oneline --decorate --graph --color=always
 }
 
 changed_repos=0
@@ -52,6 +52,7 @@ for repo in $repos; do
     log_text=$(get_remote_diff_log)
     no_up=""
     workchange=""
+    changed_repos=0
     if [[ -n "$log_text" ]]; then #"$(echo '$log_text' | sed 's/\\s+//g')" ]]; then
       no_up=yes
     fi
@@ -61,7 +62,7 @@ for repo in $repos; do
     fi
     # Output, if needed
     if [[ -n "$no_up" || -n "$workchange" ]]; then
-      changed_repos=$((changed_repos+1))
+      changed_repos=1
       echo "$BOLD$RED$repo$NC:"
     fi
     if [[ -n "$no_up" ]]; then
@@ -70,7 +71,10 @@ for repo in $repos; do
     if [[ -n "$workchange" ]]; then
       echo "- Uncomitted changes to working directory"
     fi
+    exit $changed_repos
   )
+  # Use exit code as counter adder
+  changed_repos=$((changed_repos+$?))
 done
 
 if [[ $changed_repos -eq 0 ]]; then
