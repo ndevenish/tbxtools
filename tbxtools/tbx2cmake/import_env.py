@@ -14,6 +14,9 @@ import contextlib
 from .utils import AttrDict
 from .utils import monkeypatched
 
+# from .sconsemu import no_intercept_os
+from .intercept import no_intercept_os
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -74,14 +77,21 @@ class libtbxEnv(object):
     return os.path.join("BASEDIR", path)#UnderBase(path)
 
   def dist_path(self, module):
-    logger.debug("Asked for dist path {}".format(module))
+    logger.debug("Asked for dist path {} under {}".format(module, self._dist_path))
 
-    for repo in [".", "cctbx_project"]:
-      path = os.path.normpath(os.path.join(self._dist_path, repo, module))
-      if os.path.isdir(path):
-        logger.debug("  found exact {}".format(path))
-        return path
-    assert False
+    with no_intercept_os():
+      for repo in [".", "cctbx_project"]:
+        path = os.path.normpath(os.path.join(self._dist_path, repo, module))
+        if os.path.isdir(path):
+          logger.debug("  found exact {}".format(path))
+          # import pdb
+          # pdb.set_trace()
+          return path
+    # With no_intercept_os we can now fall through to this. But we should
+    # never be asked for the path of a module that doesn't exist - if we
+    # do, we should probably return something but this is a relatively
+    # untested path
+    assert False, "Couldnt find real dist path"
     ret = "DISTPATH[{}]/".format(module)
     logger.debug("   returning {} ".format(ret))
     return ret

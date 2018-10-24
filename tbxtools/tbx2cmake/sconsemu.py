@@ -20,6 +20,8 @@ from enum import Enum
 from .utils import InjectableModule, monkeypatched
 from .import_env import do_import_patching
 
+from .intercept import SystemEnvInterceptor, no_intercept_os
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -404,61 +406,22 @@ def _wrappedOpen(file, mode=None):
   return _fakeFile(file)
 
 
-@contextlib.contextmanager
-def no_intercept_os():
-  "Contextmanager to temporarily suspend the OS interception checks"
-  with _fake_system_env.current.suspend():
-    yield
-
-class _undo_fake_system_env(object):
-  """Created from a fake env, context manager to suspend behaviour"""
-  def __init__(self, original):
-    self._orig = original
-
-  def __enter__(self):
-    self._orig.__exit__(None,None,None)
-
-  def __exit__(self, *args):
-    self._orig.__enter__()
+# @contextlib.contextmanager
+# def no_intercept_os():
+#   "Contextmanager to temporarily suspend the OS interception checks"
+#   with _fake_system_env.current.suspend():
+#     yield
 
 class _fake_system_env(object):
   current = None
   def __init__(self, env):
-    # self._os = {}
-    # self._ospath = {}
-    # self._sys = {}
     self.env = env
-    self._orig = defaultdict(dict)
 
-  _to_rewrite = [
+  to_rewrite = [
     (os, {"mkdir", "name", "path"}),
     (posixpath, {"isdir", "isfile", "exists"}),
     (sys, {"platform"})
   ]
-
-  def suspend(self):
-    return _undo_fake_system_env(self)
-
-  def __enter__(self):
-    assert _fake_system_env.current is None
-    # logger.debug("Entering fake OS environment")
-    # traceback.print_stack()
-    _fake_system_env.current = self
-    for module, names in self._to_rewrite:
-      for name in names:
-        self._orig[module][name] = getattr(module, name)
-        setattr(module, name, getattr(self, "_fake_{}".format(name)))
-
-  def __exit__ (self, type, value, tb):
-    # logger.debug("Exiting fake OS environment")
-    # traceback.print_stack()
-    # Reset these values in reverse order
-    for module, names in reversed(self._to_rewrite):
-      for name in names:
-        value = self._orig[module][name]
-        setattr(module, name, value)
-    self._orig.clear()
-    _fake_system_env.current = None
 
   _fake_name = "posix"
   _fake_platform = "linux2"
@@ -488,7 +451,7 @@ class _fake_system_env(object):
     logger.debug("IS FILE: {}".format(file))
     logger.debug("".join(traceback.format_stack()))
 
-    with self.suspend():
+    with no_intercept_os():
       # If given a special location, try to find it
       if file.startswith("DISTPATH["):
         module = file[9:file.find("]")]
@@ -539,7 +502,7 @@ class SconsEmulator(object):
     logger.info("Parsing {}".format(module.name))
 
     self._fake_env = _fake_system_env(self)
-    with self._fake_env:
+    with SystemEnvInterceptor(self._fake_env):
       self.parse_sconscript(Path(scons))
 
   def sconscript_command(self, name, exports=None):
