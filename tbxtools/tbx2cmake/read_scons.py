@@ -321,7 +321,16 @@ def read_distribution(module_path):
   for target in [x for x in tbx.targets if _is_cuda_target(x)]:
     logger.info("Removing CUDA target {}".format(target.name))
     tbx.targets.remove(target)
-  # for target in [x for x in tbx.targets:
+    # Find any targets that link to this and remove those
+    # Note, that this *may* expose symbol dependency problems without
+    # unwinding Sconscript logic blocks, so enable_cuda=False may need
+    # to set at some point to properly handle this
+    link_name = target.output_filename
+    if link_name.startswith("lib"):
+      link_name = link_name[3:]
+    for dependent in (x for x in tbx.targets if link_name in x.extra_libs):
+      logger.debug("- removing {} from {}".format(link_name, dependent.name))
+      dependent.extra_libs.remove(link_name)
 
   # Remove any modules without targets (these might not even be real modules)
   for module in [x.name for x in tbx.modules.values() if not x.targets]:
