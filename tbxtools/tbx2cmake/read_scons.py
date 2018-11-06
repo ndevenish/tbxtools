@@ -66,7 +66,7 @@ class LibTBXModule(object):
             or self.has_config
             or self.has_refresh
             or self.targets
-            or os.path.isdir(os.path.join(self.module_root, self.path, "command_line"))
+            or os.path.isdir(os.path.join(self.module_root, self.path, "command_line")))
 
 @return_as_list
 def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
@@ -303,11 +303,8 @@ def _is_cuda_target(target):
     return True
   return False
 
-def read_distribution(module_path, strip_modules=True):
+def read_distribution(module_path):
   """Reads a TBX distribution, filter and prepare for output conversion.
-  Args:
-    strip_modules (bool): Should anythings that doesn't look like a
-                          module be stripped away?
   """
 
   tbx = read_module_path_sconscripts(module_path)
@@ -343,12 +340,6 @@ def read_distribution(module_path, strip_modules=True):
     for dependent in (x for x in tbx.targets if link_name in x.extra_libs):
       logger.debug("- removing {} from {}".format(link_name, dependent.name))
       dependent.extra_libs.remove(link_name)
-
-  if strip_modules:
-    # Remove any modules that don't appear to be modules (these might not even be real modules)
-    for module in [x.name for x in tbx.modules.values() if not x.looks_like_module]:
-      del tbx.modules[module]
-      logger.debug("Removing module {} because no targets".format(module))
 
   # Fix any duplicated target names
   _deduplicate_target_names(tbx.targets)
@@ -387,7 +378,19 @@ def read_distribution(module_path, strip_modules=True):
   # assert all("GL" in x.extra_libs for x in tbx.targets if "GLU" in x.extra_libs), "Not all GL has GLU"
 
   # For all targets named directly after a module, ensure it's in the module root
-  assert all([PurePosixPath(x.origin_path) == PurePosixPath(Path(tbx.modules[x.name].path)) for x in tbx.targets if x.name in tbx.modules])
+  violating_targets = [x for x in tbx.targets if x.name in tbx.modules and PurePosixPath(x.origin_path) != PurePosixPath(Path(tbx.modules[x.name].path))]
+  for target in violating_targets:
+    logger.info("Moving module-named target {} to module {} from {}".format(target.name, target.name, target.module.name))
+    target.module.targets.remove(target)
+    tbx.modules[target.name].targets.append(target)
+    target.module = tbx.modules[target.name]
+    target.origin_path = target.module.path
+
+
+  # Finally, remove any modules that don't appear to be modules (these might not even be real modules)
+  for module in [x.name for x in tbx.modules.values() if not x.looks_like_module]:
+    del tbx.modules[module]
+    logger.debug("Removing module {} because no targets".format(module))
 
   # Print some information out
   all_libs = set(itertools.chain(*[x.extra_libs for x in tbx.targets]))
