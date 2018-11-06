@@ -537,7 +537,8 @@ def _read_autogen_information(filename, tbx):
       logger.debug("Expanding global required optional dependency list with: {}".format(deps))
     # Is this a target or a module?
     elif name in tbx.modules:
-      logger.warning("Given module-level dependency testing, but this isn't properly handled yet. Setting all targets within modules.")
+      # Modules aren't handled properly yet - handle every target separately
+      logger.warning("Module {} has 'required_optional_external' but unimplemented. Setting all targets within module.".format(name))
       for target in tbx.modules[name].targets:
         _expand_target_lib_list(target, "required_optional", deps)
         # import pdb

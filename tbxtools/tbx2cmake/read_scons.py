@@ -280,10 +280,10 @@ def read_module_path_sconscripts(module_path):
     scons.parse_module(module)
 
   # Say what we found
-  logger.info("Found modules (excluding modules without SConscripts):")
+  logger.info("Found modules:")
   maxl = max(len(x.name) for x in modules.values())
   for module in sorted(modules.values(), key=lambda x: x.name):
-    if module.has_sconscript:
+    if module.looks_like_module:
       logger.info("  {}  {}".format(module.name.ljust(maxl), module.path))
 
 
