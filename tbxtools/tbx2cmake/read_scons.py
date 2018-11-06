@@ -59,6 +59,14 @@ class LibTBXModule(object):
   @property
   def has_refresh(self):
     return os.path.isfile(os.path.join(self.module_root, self.path, "libtbx_refresh.py"))
+  @property
+  def looks_like_module(self):
+    """Does this module have *anything* to indicate it might be a module?"""
+    return (self.has_sconscript
+            or self.has_config
+            or self.has_refresh
+            or self.targets
+            or os.path.isdir(os.path.join(self.module_root, self.path, "command_line"))
 
 @return_as_list
 def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
@@ -295,8 +303,12 @@ def _is_cuda_target(target):
     return True
   return False
 
-def read_distribution(module_path):
-  "Reads a TBX distribution, filter and prepare for output conversion"
+def read_distribution(module_path, strip_modules=True):
+  """Reads a TBX distribution, filter and prepare for output conversion.
+  Args:
+    strip_modules (bool): Should anythings that doesn't look like a
+                          module be stripped away?
+  """
 
   tbx = read_module_path_sconscripts(module_path)
 
@@ -332,13 +344,11 @@ def read_distribution(module_path):
       logger.debug("- removing {} from {}".format(link_name, dependent.name))
       dependent.extra_libs.remove(link_name)
 
-  # Remove any modules without targets (these might not even be real modules)
-  for module in [x.name for x in tbx.modules.values() if not x.targets]:
-    if tbx.modules[module].has_refresh or tbx.modules[module].has_config or tbx.modules[module].has_sconscript:
-      logger.debug("Keeping module {} without targets; otherwise appears to be module".format(module))
-      continue
-    del tbx.modules[module]
-    logger.debug("Removing module {} because no targets".format(module))
+  if strip_modules:
+    # Remove any modules that don't appear to be modules (these might not even be real modules)
+    for module in [x.name for x in tbx.modules.values() if not x.looks_like_module]:
+      del tbx.modules[module]
+      logger.debug("Removing module {} because no targets".format(module))
 
   # Fix any duplicated target names
   _deduplicate_target_names(tbx.targets)
