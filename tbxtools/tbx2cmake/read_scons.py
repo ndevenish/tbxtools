@@ -334,7 +334,11 @@ def read_distribution(module_path):
 
   # Remove any modules without targets (these might not even be real modules)
   for module in [x.name for x in tbx.modules.values() if not x.targets]:
+    if tbx.modules[module].has_refresh or tbx.modules[module].has_config or tbx.modules[module].has_sconscript:
+      logger.debug("Keeping module {} without targets; otherwise appears to be module".format(module))
+      continue
     del tbx.modules[module]
+    logger.debug("Removing module {} because no targets".format(module))
 
   # Fix any duplicated target names
   _deduplicate_target_names(tbx.targets)
@@ -402,10 +406,6 @@ def main(args=None):
   tbx = read_distribution(module_path)
 
 
-  import pdb
-  pdb.set_trace()
-
-
   # Can't: Not all python libraries end up in lib
   # assert all(x.output_path == "#/lib" for x in targets if x.type == Target.Type.MODULE)
 
@@ -418,7 +418,7 @@ def main(args=None):
     "modules": []
   }
 
-  for module in (x for x in tbx.modules.values() if x.targets):
+  for module in (x for x in tbx.modules.values()):
     scons_data["modules"].append({
       "path": module.path,
       "name": module.name
