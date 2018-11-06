@@ -38,18 +38,19 @@ dependencies:
 
 
 # Change the root location of certain libraries. This handles problems
-# determining the 'proper' location e.g. annlib uses sources from annlib_adaptbx
-# but we still want it in the annlib folder. Other targets with only 'generated'
-# sources are also easier to hard-code here
+# determining the 'proper' location e.g. annlib uses sources from, and is
+# constructed in, annlib_adaptbx, but we still want it in the annlib folder.
+# Other targets with only 'generated' sources are also easier to hard-code here
+# NOTE: CURRENTLY NOT IMPLEMENTED
 forced_locations:
   ann: annlib
-  cbf: cbflib
-  cma_es_ext: cctbx_project/cma_es
-  gltbx_util_ext: cctbx_project/gltbx
-  hybrid_36_fem: cctbx_project/iotbx/pdb
-  sdrive_fem: cctbx_project/scitbx/lbfgs
-  iotbx_cif_ext: cctbx_project/iotbx/cif/boost_python
-  # ccp4io: ccp4io
+  # ccp4io: ccp4io # Handled by name-matching movement
+  # cbf: cbflib
+  # cma_es_ext: cctbx_project/cma_es
+  # gltbx_util_ext: cctbx_project/gltbx
+  # hybrid_36_fem: cctbx_project/iotbx/pdb
+  # sdrive_fem: cctbx_project/scitbx/lbfgs
+  # iotbx_cif_ext: cctbx_project/iotbx/cif/boost_python
 
 # Folder to use (instead of PWD/..) for specific target/module include paths
 # This allows handling of packages with 'standard' layout. Prepend
