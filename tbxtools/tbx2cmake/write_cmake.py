@@ -7,13 +7,17 @@ No root CMakeLists.txt will be created. Instead, an autogen-CMakeLists.txt
 file will be created in the root directory that can be included by the root
 CMakeLists.txt. Writing of this root may be added later.
 
-Usage: tbx2cmake [--build-info=<infofile>] [-v | -vv] <module_dir> <output_dir>
+Usage: tbx2cmake [--build-info=<infofile>] [-v | -vv] <module_dir> [<output_dir>]
+
+Arguments:
+  <module_dir>  The TBX module-root e.g. where dials/ and cctbx_project/ live
+  <output_dir>  Where to write the CMakeLists files. Defaults to the <module_dir>
 
 Options:
--h, --help                Display this message
---build-info=<infofile>   The build information file, to supply extra info
-                          about e.g. dependencies, generated file output. See
-                          tbxtools/tbx2cmake/build_info.yaml for the defaults.
+  -h, --help                Display this message
+  --build-info=<infofile>   The build information file, to supply extra info
+                            about e.g. dependencies, generated file output. See
+                            tbxtools/tbx2cmake/build_info.yaml for the defaults.
 """
 
 import sys
@@ -565,10 +569,8 @@ def main():
   options = docopt(__doc__)
   logging.basicConfig(level=logging.INFO if not options["-v"] else logging.DEBUG)
   module_dir = options["<module_dir>"]
-  output_dir = options["<output_dir>"]
+  output_dir = options["<output_dir>"] or module_dir
   autogen_file = options["--build-info"]
-
-
 
   # Validate the input values
   if not os.path.isdir(module_dir):
