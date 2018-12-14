@@ -15,6 +15,7 @@ setup(
           'tbx2cmake=tbxtools.tbx2cmake.write_cmake:main'
         ],
     },
+    package_dir={"": "src"},
     install_requires=['enum34;python_version<"3"',
       "docopt", "networkx~=2.1", "pyyaml", "mock","pathlib2"],
     package_data={
