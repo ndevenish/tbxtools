@@ -1,1 +1,1 @@
-from .model import Distribution, DependencyError
+from .model import Distribution, DependencyError  # noqa

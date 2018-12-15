@@ -1,30 +1,22 @@
 # coding: utf-8
 
+import copy
+from enum import Enum
+import inspect
+import logging
 import os
+from pathlib import PurePosixPath, WindowsPath, PosixPath
 import posixpath
 import sys
-import inspect
-import copy
-import glob
-import contextlib
-import fnmatch
 import traceback
-from collections import defaultdict
 
-# Since we swizzle the OS definitions, decide "local" at import time
-from pathlib import PurePosixPath, WindowsPath, PosixPath
-
-Path = WindowsPath if (os.name == "nt") else PosixPath
-
-from enum import Enum
-
-from .utils import InjectableModule, monkeypatched
+from .utils import InjectableModule
 from .import_env import do_import_patching
 
 from .intercept import SystemEnvInterceptor, no_intercept_os
 
-import logging
-
+# Since we swizzle the OS definitions, decide "local" at import time
+Path = WindowsPath if (os.name == "nt") else PosixPath
 logger = logging.getLogger(__name__)
 
 
@@ -175,7 +167,7 @@ class SConsEnvironment(object):
         for key, val in kwargs.items():
             if isinstance(val, basestring):
                 val = [val]
-            if not key in self.kwargs:
+            if key not in self.kwargs:
                 self.kwargs[key] = []
             self.kwargs[key].extend(val)
             self._update(key)
@@ -184,7 +176,7 @@ class SConsEnvironment(object):
         for key, val in kwargs.items():
             if isinstance(val, basestring):
                 val = [val]
-            if not key in self.kwargs:
+            if key not in self.kwargs:
                 self.kwargs[key] = []
             self.kwargs[key][:0] = val
             self._update(key)
@@ -210,25 +202,28 @@ class SConsEnvironment(object):
 
     def __getitem__(self, key):
         # Check the defaults first, so we only write to kwargs what isn't explicit
-        if not key in self.kwargs:
+        if key not in self.kwargs:
             return self._DEFAULT_KWARGS[key]
         return self.kwargs[key]
 
     def __contains__(self, key):
-        return self.has_key(key)
+        return key in self.kwargs or key in self._DEFAULT_KWARGS
 
     def has_key(self, key):
-        return key in self.kwargs or key in self._DEFAULT_KWARGS
+        return key in self
 
     def Repository(self, path):
         self.Append(REPOSITORIES=path)
 
     def SConscript(self, name, exports=None):
-        """Sometimes, sub-SConscripts are called from an environment. Appears to behave the same."""
+        """Sometimes, sub-SConscripts are called from an environment.
+
+        Appears to behave the same.
+        """
         self.runner.sconscript_command(name, exports)
 
     def _create_target(self, targettype, target, source, **kwargs):
-        """Gathers target information from the environment at the point of creation"""
+        """Gathers target information from the environment when created"""
         if isinstance(source, basestring):
             source = [source]
         if target.startswith("#lib"):
@@ -251,8 +246,8 @@ class SConsEnvironment(object):
                 assert False
 
         # Now let's filter/reduce the libs set. We know:
-        # - Everything gets boost_thread, boost_system if threading is available, so no special required.
-        # - Everything gets lm in SCons, unnecessary to track as universal (and automatic in clang?)
+        # - Everything gets boost_thread, boost_system if threading is available
+        # - Everything gets lm in SCons, unnecessary to track as universal
         libs -= {"boost_thread", "boost_system", "m"}
         target.extra_libs = libs
 
@@ -299,17 +294,11 @@ class SConsEnvironment(object):
     def SharedLibrary(self, target, source, **kwargs):
         self._create_target(Target.Type.SHARED, target, source, **kwargs)
 
-        # Target(Target.Type.SHARED, environment=self, output_name=target, sources=source, **kwargs)
-        # print("Shared lib: {} (relative to {})\n     sources: {}".format(target, self.runner._current_sconscript, source))
-
     def StaticLibrary(self, target, source, **kwargs):
         self._create_target(Target.Type.STATIC, target, source, **kwargs)
 
-        # print("Static lib: {} (relative to {})\n     sources: {}".format(target, self.runner._current_sconscript, source))
-
     def Program(self, target, source, **kwargs):
         self._create_target(Target.Type.PROGRAM, target, source, **kwargs)
-        # print("Program: {} (relative to {})\n     sources: {}".format(target, self.runner._current_sconscript, source))
         # Used at least once
         return [ProgramReturn(target)]
 

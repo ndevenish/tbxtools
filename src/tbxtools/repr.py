@@ -1,10 +1,12 @@
 """Monkeypatching scitbx/cctbx for diagnostics output"""
 
 import enum
+from math import log10, floor
+import re
+from StringIO import StringIO
+
 from libtbx import phil
 import numpy
-import re
-from math import *
 
 
 class Flags(enum.IntEnum):
@@ -189,8 +191,6 @@ def _reftable_repr(self):
 
 # re_remove_dtype
 def _patch_flex(flex, dtype, shape=None, ndim=1):
-    import numpy
-
     def _do_repr(x):
         if x.size() == 0:
             return type(x).__name__ + "([])"

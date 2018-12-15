@@ -5,10 +5,8 @@ from __future__ import absolute_import, division, print_function
 import sys
 import logging
 import textwrap
-import argparse
-import collections
 
-from .model import Distribution, Module
+from .model import Distribution
 from docopt import docopt
 
 # List of modules to allow to be missing
@@ -22,7 +20,8 @@ def run_expand_dependencies():
   Modules can be passed in as individual items, but a CMake-style semicolon-
   separated list will also be accepted.
 
-  Usage:  tbx-expand-deps [options] [--optional=MOD]... <distribution> [<module> [<module> ...]]
+  Usage:  tbx-expand-deps [options] [--optional=MOD]...
+              <distribution> [<module> [<module> ...]]
           tbx-expand-deps -h | --help
 
   Options:

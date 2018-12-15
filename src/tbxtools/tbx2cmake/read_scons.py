@@ -119,7 +119,7 @@ class TargetCollection(collections.Set):
         if target.module is None:
             return False
         # The target module must exist identically in this distribution
-        if not target.module is self.distribution._modules.get(target.module.name):
+        if target.module is not self.distribution._modules.get(target.module.name):
             return False
         assert target in target.module.targets, "Target-modules out of sync"
         return True
@@ -291,11 +291,10 @@ def _deduplicate_target_names(targets):
     for duplicate in [x for x in namecount.keys() if namecount[x] > 1]:
         duped = [x for x in targets if x.name == duplicate]
         modules = set(x.module for x in duped)
-        assert len(modules) == len(
-            duped
-        ), "Module name not enough to disambiguate duplicate targets named {} (in {})".format(
-            duplicate, modules
-        )
+        assert len(modules) == len(duped), (
+            "Module name not enough to disambiguate duplicate targets "
+            "named {} (in {})"
+        ).format(duplicate, modules)
         for target in duped:
             oldname = target.name
             target.name = "{}_{}".format(target.name, target.module.name)
@@ -381,7 +380,7 @@ def read_distribution(module_path):
 
     # Remove any modules we don't want
     # - Clipper has some script referencing we don't understand completely
-    # - fftw3tbx uses an external library and we don't use this in dials, so skip for now
+    # - fftw3tbx uses an external library and we don't use this in dials, so skip
     for module in {"clipper", "clipper_adaptbx", "fftw3tbx"}:
         if module in tbx.modules:
             logger.info(
@@ -445,8 +444,10 @@ def read_distribution(module_path):
     assert all(
         not x.shared_sources for x in tbx.targets
     ), "Shared sources exists - all should be filtered"
-    # assert all("GLU" in x.extra_libs for x in tbx.targets if "GL" in x.extra_libs), "Not all GLU has GL"
-    # assert all("GL" in x.extra_libs for x in tbx.targets if "GLU" in x.extra_libs), "Not all GL has GLU"
+    # assert all("GLU" in x.extra_libs for x in tbx.targets if "GL" in x.extra_libs), (
+    # "Not all GLU has GL")
+    # assert all("GL" in x.extra_libs for x in tbx.targets if "GLU" in x.extra_libs), (
+    # "Not all GL has GLU")
 
     # For all targets named directly after a module, ensure it's in the module root
     violating_targets = [
@@ -467,7 +468,8 @@ def read_distribution(module_path):
         target.module = tbx.modules[target.name]
         target.origin_path = target.module.path
 
-    # Finally, remove any modules that don't appear to be modules (these might not even be real modules)
+    # Finally, remove any modules that don't appear to be modules
+    # - might not even be real modules
     for module in [x.name for x in tbx.modules.values() if not x.looks_like_module]:
         del tbx.modules[module]
         logger.debug("Removing module {} because no targets".format(module))
@@ -514,7 +516,9 @@ def main(args=None):
     tbx = read_distribution(module_path)
 
     # Can't: Not all python libraries end up in lib
-    # assert all(x.output_path == "#/lib" for x in targets if x.type == Target.Type.MODULE)
+    # assert all(
+    #     x.output_path == "#/lib" for x in targets if x.type == Target.Type.MODULE
+    # )
 
     # Build an export dictionary
     # module_data = defaultdict(list)

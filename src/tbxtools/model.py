@@ -4,11 +4,9 @@
 Contains the model objects for a tbx-like distribution
 """
 
-import os
 import ast
+import os
 import logging
-import collections
-import itertools
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +51,10 @@ class Module(object):
         config_filename = os.path.join(dist.path, self.path, "libtbx_config")
         if os.path.isfile(config_filename):
             with open(config_filename) as f:
-                #  Unfortunately, these files aren't json but some custom-written
+                # Unfortunately, these files aren't json but some custom-written
                 # python dictionary syntax (e.g. json + trailing commas)
                 for key, value in ast.literal_eval(f.read()).items():
-                    if not key in self.config:
+                    if key not in self.config:
                         logger.warning(
                             "Unknown libtbx_config key {} in module {}".format(
                                 key, self.name
@@ -103,7 +101,8 @@ class Distribution(object):
         # Without libtbx it's probably not a tbx-distribution?
         if not self.load_module("libtbx"):
             logger.warning(
-                "Could not find libtbx in distribution; This is allowed but probably not intentional"
+                "Could not find libtbx in distribution; "
+                "This is allowed but probably not intentional"
             )
 
     def _find_module_dir(self, name):
@@ -116,7 +115,7 @@ class Distribution(object):
         "Ensure the dependencies for a given module are loaded"
 
         # Everything depends on libtbx!
-        if not module is self._modules["libtbx"]:
+        if module is not self._modules["libtbx"]:
             module.dependencies.add(self._modules["libtbx"])
             self._modules["libtbx"].dependents.add(module)
 

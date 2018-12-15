@@ -87,7 +87,7 @@ class CMakeLists(object):
         "Returns a CMakeLists object for a specific subpath"
         assert not os.path.isabs(path)
         parts = fully_split_path(path)
-        assert not ".." in parts, "No relative referencing implemented"
+        assert ".." not in parts, "No relative referencing implemented"
         if parts[0] in {"", "."}:
             return self
         else:
@@ -169,7 +169,7 @@ class CMakeLists(object):
                     blocks.append(CMLProgramOutput(target))
                 else:
                     # Warn about target types not yet handled
-                    if not target.type in _warned_types:
+                    if target.type not in _warned_types:
                         _warned_types.add(target.type)
                         logger.warn("Not handling {} yet".format(target.type))
 
@@ -238,7 +238,7 @@ class CMLModuleRootBlock(CMakeListBlock):
         if self.cml.module.generated_sources:
             lines.append("")
             lines.append(
-                "add_libtbx_refresh_command( ${CMAKE_CURRENT_SOURCE_DIR}/libtbx_refresh.py"
+                "add_libtbx_refresh_command( ${CMAKE_CURRENT_SOURCE_DIR}/libtbx_refresh.py"  # noqa: E501
             )
 
             slines = []
@@ -304,8 +304,8 @@ class CMLLibraryOutput(CMakeListBlock):
     Passed info to format is of form (name, destination).
     """
 
-        # Slightly messy - but what the object classes as can be vague, depending on platform
-        # See https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html#output-artifacts
+        # Slightly messy - but what the object classes as can be vague
+        # See https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html#output-artifacts # noqa: E501
         return """set_target_properties( {0:} PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY "{1:}"
   LIBRARY_OUTPUT_DIRECTORY "{1:}"
@@ -330,13 +330,11 @@ class CMLLibraryOutput(CMakeListBlock):
             )
 
         # Handle non-standard output paths
-        if not self.target.output_path in {"#/lib", ""}:
-            # print ("Output path for {}: {}".format(self.target.name, self.target.output_path))
+        if self.target.output_path not in {"#/lib", ""}:
             if self.target.output_path.startswith("#"):
                 output_path = "${CMAKE_BINARY_DIR}/" + self.target.output_path[1:]
             else:
                 output_path = self.target.output_path
-            # print ".   -> ", output_path
             # Delegate the actual lines used here so we can be as clean as possible
             lines.append(
                 self._get_target_location_setter().format(self.target.name, output_path)
@@ -399,7 +397,9 @@ class CMLLibraryOutput(CMakeListBlock):
             )
 
         # Reqired otherwise-optional external libs
-        # required_optional = (self.target.extra_libs - self.target.optional_extra_libs) & OPTIONAL_DEPENDS
+        # required_optional = (
+        #     self.target.extra_libs - self.target.optional_extra_libs
+        # ) & OPTIONAL_DEPENDS
 
         # Handle any optional dependencies
         if optional_libs:
@@ -428,11 +428,11 @@ class CMLLibraryOutput(CMakeListBlock):
             )
             # cond_lines = []
             if len(combined_requirements) == 1:
-                comment_message = "# {} requires this normally optional dependency".format(
+                comment_message = "# {} requires this normally optional dependency".format(  # noqa: E501
                     self.target.name
                 )
             else:
-                comment_message = "# {} requires these normally optional dependencies".format(
+                comment_message = "# {} requires these normally optional dependencies".format(  # noqa: E501
                     self.target.name
                 )
 
@@ -463,7 +463,9 @@ class CMLProgramOutput(CMLLibraryOutput):
 
     def _get_target_location_setter(self):
         # Executables, we always know what type they are
-        return """set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")"""
+        return (
+            'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'
+        )  # noqa: E501
 
     def __str__(self):
         # If we have no
@@ -529,7 +531,8 @@ def _read_autogen_information(filename, tbx):
         lookup_sources = [x for x in target.sources if x.startswith("#")]
         unknown = set()
         for source in lookup_sources:
-            # If the source is generated, then mark it so and it'll be read from the build dir
+            # If the source is generated, then mark it so and it'll be
+            # read from the build dir
             if source[1:] in tbx.all_generated:
                 target.sources.remove(source)
                 target.generated_sources.add(source[1:])
@@ -541,7 +544,8 @@ def _read_autogen_information(filename, tbx):
                     full_path = Path(tbx.module_path) / repo / source_fs
                     if full_path.is_file():
                         # print("Found {} in {}".format(source, repo))
-                        # Change the sources list to use a relative reference to the target path
+                        # Change the sources list to use a relative
+                        # reference to the target path
                         target.sources.remove(source)
                         relpath = posixpath.relpath(
                             (repo / source_fs).as_posix(), target.origin_path
@@ -594,7 +598,8 @@ def _read_autogen_information(filename, tbx):
                 )
             )
 
-    # Handle any forced dependencies (e.g. things we can't tell/can't tell easily from SCons)
+    # Handle any forced dependencies (e.g. things we can't tell/
+    # can't tell easily from SCons)
     for name, deps in data.get("dependencies", {}).items():
         _expand_target_lib_list(tbx.targets[name], "extra_libs", deps)
 
@@ -630,9 +635,10 @@ def _read_autogen_information(filename, tbx):
         elif name in tbx.modules:
             # Modules aren't handled properly yet - handle every target separately
             logger.warning(
-                "Module {} has 'required_optional_external' but unimplemented. Setting all targets within module.".format(
-                    name
-                )
+                (
+                    "Module {} has 'required_optional_external' but unimplemented. "
+                    "Setting all targets within module."
+                ).format(name)
             )
             for target in tbx.modules[name].targets:
                 _expand_target_lib_list(target, "required_optional", deps)
@@ -680,9 +686,10 @@ def main():
         sys.exit(1)
     if os.path.isfile(output_dir):
         print(
-            "Error: Output path {} is a file. Please specify a directory or name of one to create.".format(
-                options["<module_dir>"]
-            )
+            (
+                "Error: Output path {} is a file. "
+                "Please specify a directory or name of one to create."
+            ).format(options["<module_dir>"])
         )
         sys.exit(1)
 

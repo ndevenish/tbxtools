@@ -1,7 +1,4 @@
 from collections import defaultdict
-import os
-import sys
-import posixpath
 import contextlib
 
 
