@@ -1,5 +1,6 @@
 # coding: utf-8
 
+
 import copy
 from enum import Enum
 import inspect
@@ -10,10 +11,11 @@ import posixpath
 import sys
 import traceback
 
-from .utils import InjectableModule
-from .import_env import do_import_patching
+import six
 
+from .import_env import do_import_patching
 from .intercept import SystemEnvInterceptor, no_intercept_os
+from .utils import InjectableModule
 
 # Since we swizzle the OS definitions, decide "local" at import time
 Path = WindowsPath if (os.name == "nt") else PosixPath
@@ -165,7 +167,7 @@ class SConsEnvironment(object):
 
     def Append(self, **kwargs):
         for key, val in kwargs.items():
-            if isinstance(val, basestring):
+            if isinstance(val, six.string_types):
                 val = [val]
             if key not in self.kwargs:
                 self.kwargs[key] = []
@@ -174,7 +176,7 @@ class SConsEnvironment(object):
 
     def Prepend(self, **kwargs):
         for key, val in kwargs.items():
-            if isinstance(val, basestring):
+            if isinstance(val, six.string_types):
                 val = [val]
             if key not in self.kwargs:
                 self.kwargs[key] = []
@@ -224,7 +226,7 @@ class SConsEnvironment(object):
 
     def _create_target(self, targettype, target, source, **kwargs):
         """Gathers target information from the environment when created"""
-        if isinstance(source, basestring):
+        if isinstance(source, six.string_types):
             source = [source]
         if target.startswith("#lib"):
             target = "#/lib" + target[4:]
@@ -238,7 +240,7 @@ class SConsEnvironment(object):
         # Massage lib list to flatten any odd sublists etc
         libs = set()
         for lib in target.env["LIBS"]:
-            if isinstance(lib, basestring):
+            if isinstance(lib, six.string_types):
                 libs.add(lib)
             elif isinstance(lib, list):
                 libs |= set(lib)
@@ -507,8 +509,11 @@ class SconsEmulator(object):
         logger.info("Parsing {}".format(module.name))
 
         self._fake_env = _fake_system_env(self)
-        with SystemEnvInterceptor(self._fake_env):
-            self.parse_sconscript(Path(scons))
+        try:
+            with SystemEnvInterceptor(self._fake_env):
+                self.parse_sconscript(Path(scons))
+        except SyntaxError as e:
+            logger.error("SyntaxError parsing %s: %s (ignoring)", module.name, str(e))
 
     def sconscript_command(self, name, exports=None):
         newpath = self._current_sconscript.parent / PurePosixPath(name)

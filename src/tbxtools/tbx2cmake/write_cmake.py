@@ -20,15 +20,16 @@ Options:
                             tbxtools/tbx2cmake/build_info.yaml for the defaults.
 """
 
-import sys
-import os
 import logging
-import pkgutil
+import os
 from pathlib import PurePosixPath, Path
+import pkgutil
 import posixpath
+import sys
 
 from docopt import docopt
 import yaml
+import six
 
 from .utils import fully_split_path
 from .read_scons import read_distribution
@@ -490,9 +491,9 @@ def _expand_target_lib_list(target, liblist, values):
   :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
   :param values:  The value(s) to add to the list(s). `str` or `[str]`
   """
-    if isinstance(values, basestring):
+    if isinstance(values, six.string_types):
         values = [values]
-    if isinstance(liblist, basestring):
+    if isinstance(liblist, six.string_types):
         liblist = [liblist]
     logger.debug(
         "Adding {} to {}'s [{}]".format(values, target.name, ", ".join(liblist))
@@ -609,7 +610,7 @@ def _read_autogen_information(filename, tbx):
         if name == "all":
             global OPTIONAL_DEPENDS
             OPTIONAL_DEPENDS |= (
-                set(deps) if not isinstance(deps, basestring) else set([deps])
+                set(deps) if not isinstance(deps, six.string_types) else set([deps])
             )
             logger.debug(
                 "Expanding global optional dependency list with: {}".format(deps)
@@ -624,7 +625,7 @@ def _read_autogen_information(filename, tbx):
         if name == "all":
             global REQUIRED_OPTIONAL
             REQUIRED_OPTIONAL |= (
-                set(deps) if not isinstance(deps, basestring) else set([deps])
+                set(deps) if not isinstance(deps, six.string_types) else set([deps])
             )
             logger.debug(
                 "Expanding global required optional dependency list with: {}".format(
@@ -649,7 +650,7 @@ def _read_autogen_information(filename, tbx):
 
     # Handle adding of include paths to specific targets/modules
     for name, incs in data.get("target_includes", {}).items():
-        if isinstance(incs, basestring):
+        if isinstance(incs, six.string_types):
             incs = [incs]
 
         inc_target = None

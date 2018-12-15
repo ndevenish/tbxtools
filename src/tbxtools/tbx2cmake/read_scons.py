@@ -4,18 +4,19 @@
 Reads a tree of SConscripts and extracts module and target information
 """
 
-import os
-import sys
-import networkx as nx
 import collections
 import itertools
-import yaml
+import logging
+import os
 from pathlib import PurePosixPath, Path
+import sys
+
+import networkx as nx
+import six
+import yaml
 
 from .utils import return_as_list
 from .sconsemu import SconsEmulator, Target
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class TargetCollection(collections.Set):
         self.distribution = distribution
 
     def __contains__(self, target):
-        if isinstance(target, basestring):
+        if isinstance(target, six.string_types):
             return any(x.name == target for x in self)
         # The target must have a module to be in the distribution
         if target.module is None:
@@ -424,7 +425,7 @@ def read_distribution(module_path):
     for target in [x for x in tbx.targets if x.shared_sources]:
         assert len(target.shared_sources) == 1
         src = target.shared_sources[0].path
-        if isinstance(src, basestring):
+        if isinstance(src, six.string_types):
             src = [src]
         if src in KNOWN_IGNORABLE_SHARED:
             target.sources.extend(src)

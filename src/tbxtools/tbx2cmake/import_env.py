@@ -69,6 +69,7 @@ class libtbxBuildOptions(object):
     # since it's just a define keep in for parsing scons
     mode = "invalid"  # AFAICT this is only tested as mode == "profile" (linux only)
     static_libraries = False
+    use_conda = False
 
 
 class libtbxEnv(object):
