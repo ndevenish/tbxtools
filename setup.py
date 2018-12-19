@@ -18,6 +18,7 @@ setup(
     package_dir={"": "src"},
     install_requires=[
         'enum34;python_version<"3"',
+        'pathlib;python_version<"3"',
         "docopt",
         "networkx~=2.1",
         "pyyaml",
