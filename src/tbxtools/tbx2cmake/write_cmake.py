@@ -236,7 +236,13 @@ class CMLModuleRootBlock(CMakeListBlock):
             lines.append(_append_list_to(linepre, include_paths, append=(" )", "\n)")))
 
         # Write out the libtbx refresh generator, along with the sources it creates
-        if self.cml.module.generated_sources:
+        if self.cml.module.generated_sources == [True]:
+            # Minor hack to allow explicitly reading non-generating libtbx_refresh
+            lines.append("")
+            lines.append(
+                "add_libtbx_refresh_command( ${CMAKE_CURRENT_SOURCE_DIR}/libtbx_refresh.py )"  # noqa: E501
+            )
+        elif self.cml.module.generated_sources:
             lines.append("")
             lines.append(
                 "add_libtbx_refresh_command( ${CMAKE_CURRENT_SOURCE_DIR}/libtbx_refresh.py"  # noqa: E501

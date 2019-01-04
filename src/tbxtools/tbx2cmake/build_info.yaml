@@ -232,3 +232,6 @@ libtbx_refresh:
     - iotbx/pdb/hybrid_36_fem.cpp
   smtbx:
     - include/smtbx/boost_python/flex_fwd.h
+  # Dials does setuptools-ish registration stuff
+  dials:
+    - True
