@@ -27,6 +27,11 @@ import pkgutil
 import posixpath
 import sys
 
+try:
+    from typing import Set
+except ImportError:
+    pass
+
 from docopt import docopt
 import yaml
 import six
@@ -62,14 +67,14 @@ DEPENDENCY_RENAMES = {
 # external dependency listed for these, the target will be always added
 # and then an extra test added for linking in these. Filled from the
 # build_info.yaml:optional_dependencies.all field.
-OPTIONAL_DEPENDS = set()
+OPTIONAL_DEPENDS = set()  # type: Set[str]
 
 # Global required optionals - dependencies that are optional globally,
 # but any specific target that requests it must be skipped if this
 # dependency is missing.
-REQUIRED_OPTIONAL = set()
+REQUIRED_OPTIONAL = set()  # type: Set[str]
 
-_warned_types = set()
+_warned_types = set()  # type: Set[str]
 
 
 class CMakeLists(object):
