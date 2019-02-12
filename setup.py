@@ -23,7 +23,6 @@ setup(
         "networkx~=2.1",
         "pyyaml",
         "mock",
-        "pathlib2",
     ],
     package_data={"tbxtools.tbx2cmake": ["build_info.yaml"]},
 )
