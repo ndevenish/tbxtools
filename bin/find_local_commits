@@ -53,15 +53,10 @@ for repo in $repos; do
     stashes=$(git stash list)
     no_up=""
     workchange=""
-    stashes=""
     changed_repos=0
-    if [[ -n "$log_text" ]]; then #"$(echo '$log_text' | sed 's/\\s+//g')" ]]; then
+    if [[ -n "$log_text" ]]; then
       no_up=yes
     fi
-    if [[ -n "stashes" ]]; then
-      stashes=yes
-    fi
-    #set +x
     if ! git diff-index --quiet HEAD --; then
       workchange=yes
     fi
