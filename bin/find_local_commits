@@ -50,18 +50,23 @@ changed_repos=0
 for repo in $repos; do
   ( cd $repo
     log_text=$(get_remote_diff_log)
+    stashes=$(git stash list)
     no_up=""
     workchange=""
+    stashes=""
     changed_repos=0
     if [[ -n "$log_text" ]]; then #"$(echo '$log_text' | sed 's/\\s+//g')" ]]; then
       no_up=yes
+    fi
+    if [[ -n "stashes" ]]; then
+      stashes=yes
     fi
     #set +x
     if ! git diff-index --quiet HEAD --; then
       workchange=yes
     fi
     # Output, if needed
-    if [[ -n "$no_up" || -n "$workchange" ]]; then
+    if [[ -n "$no_up" || -n "$workchange" || -n "$stashes" ]]; then
       changed_repos=1
       echo "$BOLD$RED$repo$NC:"
     fi
@@ -70,6 +75,9 @@ for repo in $repos; do
     fi
     if [[ -n "$workchange" ]]; then
       echo "- Uncomitted changes to working directory"
+    fi
+    if [[ -n "$stashes" ]]; then
+      echo "- Stashes present"
     fi
     exit $changed_repos
   )
