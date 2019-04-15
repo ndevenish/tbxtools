@@ -15,7 +15,7 @@ fail() {
   shift
   reason=$*
   message="$BOLD$RED$name$NC$RED: $reason$NC"
-  echo $message
+  echo "$message"
   not_updated="${not_updated}\n  ${message}"
 }
 
@@ -33,9 +33,10 @@ if ! subdirs=$(find -L . -type d -depth 1 2>/dev/null); then
 fi
 
 for dir in $subdirs; do
-  name=$(basename $dir)
+  name=$(basename "$dir")
+
   if [[ -d ${MODULE_ROOT}/$dir/.git ]]; then
-    cd ${MODULE_ROOT}/$dir
+    cd "${MODULE_ROOT}"/"$dir" || continue
     # Detect if this is a git-svn repository
     if [[ -d .git/svn && -n "$(ls -A .git/svn/)" ]]; then
       update_command='git svn rebase'
@@ -47,24 +48,24 @@ for dir in $subdirs; do
     # Conditions for trying are the same for normal/svn
     if [[ $(git rev-parse --abbrev-ref HEAD) != "master" ]]; then
       git fetch || true;
-      fail $name "Not on master branch. Not attempting update."
+      fail "$name" "Not on master branch. Not attempting update."
     elif ! git diff-index --quiet HEAD --; then
       git fetch || true;
-      fail $name "Changes to working directory; cannot update."
+      fail "$name" "Changes to working directory; cannot update."
     else
       if ! ${update_command}; then
-        fail $name "git command failed."
+        fail "$name" "git command failed."
       fi
     fi
 
     echo ""
   elif [[ -d ${MODULE_ROOT}/$dir/.svn ]]; then
     echo "Updating $dir (svn)"
-    cd ${MODULE_ROOT}/$dir
+    cd "${MODULE_ROOT}"/"$dir" || continue
     svn update
     exit_code=$?
     if [[ $exit_code -ne 0 ]]; then
-      fail $name "svn exited with status $exit_code"
+      fail "$name" "svn exited with status $exit_code"
     fi
     echo ""
   fi
@@ -72,5 +73,5 @@ done
 
 # Make sure the user is told about anything not updated
 if [[ -n "$not_updated" ]]; then
-  printf "Some modules were not updated: ${not_updated}$NC\n"
+  printf "Some modules were not updated: %s%s\n" "${not_updated}" "$NC"
 fi
