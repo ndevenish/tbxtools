@@ -10,3 +10,7 @@ repos:
     -   id: flake8
     -   id: debug-statements
     # -   id: ...
+-   repo: git://github.com/detailyang/pre-commit-shell
+    sha: 1.0.4
+    hooks:
+    - id: shell-lint
