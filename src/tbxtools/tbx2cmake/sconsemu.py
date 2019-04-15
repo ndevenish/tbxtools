@@ -294,10 +294,10 @@ class SConsEnvironment(object):
         return target
 
     def SharedLibrary(self, target, source, **kwargs):
-        self._create_target(Target.Type.SHARED, target, source, **kwargs)
+        return self._create_target(Target.Type.SHARED, target, source, **kwargs)
 
     def StaticLibrary(self, target, source, **kwargs):
-        self._create_target(Target.Type.STATIC, target, source, **kwargs)
+        return self._create_target(Target.Type.STATIC, target, source, **kwargs)
 
     def Program(self, target, source, **kwargs):
         self._create_target(Target.Type.PROGRAM, target, source, **kwargs)
@@ -305,7 +305,7 @@ class SConsEnvironment(object):
         return [ProgramReturn(target)]
 
     def cudaSharedLibrary(self, target, source):
-        target = self._create_target(Target.Type.CUDALIB, target, source)
+        return self._create_target(Target.Type.CUDALIB, target, source)
         # print("CUDA program: {}, {}".format(target, source))
 
     def SharedObject(self, source):
@@ -549,6 +549,11 @@ class SconsEmulator(object):
         def _new_env(*args, **kwargs):
             return SConsEnvironment(self, *args, **kwargs)
 
+        def _depends(target, dependson):
+            logger.warning(
+                "Got depends %s->%s but ignoring for now.", target, dependson
+            )
+
         inj = {
             "Environment": _new_env,
             "open": _wrappedOpen,
@@ -558,6 +563,7 @@ class SconsEmulator(object):
             "Import": _env_import,
             "SConscript": self.sconscript_command,
             "Glob": _env_glob,
+            "Depends": _depends,
         }
         # Inject this
         module.inject(inj)

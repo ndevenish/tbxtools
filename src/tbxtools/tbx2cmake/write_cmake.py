@@ -45,6 +45,7 @@ logger = logging.getLogger()
 # Renames from Scons-library targets to CMake names
 DEPENDENCY_RENAMES = {
     "boost_python": "Boost::python",
+    "boost_filesystem": "Boost::filesystem",
     "tiff": "TIFF::TIFF",
     "GL": "OpenGL::GL",
     "GLU": "OpenGL::GLU",

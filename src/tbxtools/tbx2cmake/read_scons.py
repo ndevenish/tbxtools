@@ -494,6 +494,8 @@ def read_distribution(module_path):
         "hdf5_hl",
         "gtest",
         "gtest_main",
+        "boost_filesystem",
+        "dl",
     }
     assert (
         not external_libs - expected_external_libs
