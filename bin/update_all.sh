@@ -73,5 +73,5 @@ done
 
 # Make sure the user is told about anything not updated
 if [[ -n "$not_updated" ]]; then
-  printf "Some modules were not updated: %s%s\n" "${not_updated}" "$NC"
+  printf "Some modules were not updated: %b%b\n" "${not_updated}" "$NC"
 fi
