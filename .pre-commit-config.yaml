@@ -8,7 +8,9 @@ repos:
     rev: v2.0.0  # Use the ref you want to point at
     hooks:
     -   id: flake8
+        language_version: python3
     -   id: debug-statements
+        language_version: python3
     # -   id: ...
 -   repo: git://github.com/detailyang/pre-commit-shell
     sha: 1.0.4
