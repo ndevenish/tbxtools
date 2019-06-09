@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """
-Do something with Bowler
+Float imports from enclosed scopes to global.
+
+Requires python3 with the packages bowler, pytest available.
+
+Doesn't float imports that:
+    - Have a comment directly preceeding it
+    - Are inside a try block
+    - Are inside an if block
+    - Are importing matplotlib (deal with this case later)
 """
 
 import argparse
