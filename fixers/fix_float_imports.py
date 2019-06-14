@@ -219,24 +219,46 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
     if node.parent.parent.type == python_symbols.file_input:
         return
 
-    # Bypass nodes with comments for now
-    if node.get_suffix().strip() or get_complete_prefix(node).strip():
-        print(f"Not floating {filename}:{node.get_lineno()} as has comments")
-        return
+    IMPORT_WHITELIST = {
+        "importlib",
+        "math",
+        "optparse",
+        "os",
+        "six.moves.cPickle as pickle",
+        "six.moves",
+        "sys",
+        "urllib2",
+        "uuid",
+    }
 
-    if "matplotlib" in str(node):
-        print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
-        return
+    always_float = str(node.children[1]).strip() in IMPORT_WHITELIST
+    if not always_float:
+        # Bypass nodes with comments for now
+        if node.get_suffix().strip() or get_complete_prefix(node).strip():
+            print(
+                f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as has comments"
+            )
+            print(f"! {node.children[1]}")
+            return
+
+        if "matplotlib" in str(node):
+            print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
+            return
 
     # Find the root node. While doing so, check that we aren't inside a try
     root = node
     while root.parent:
-        if root.type == python_symbols.try_stmt:
-            print(f"Not floating {filename}:{node.get_lineno()} as inside try")
-            return
-        if root.type == python_symbols.if_stmt and not IGNORE_IF:
-            print(f"Not floating {filename}:{node.get_lineno()} as inside if")
-            return
+        if not always_float:
+            if root.type == python_symbols.try_stmt:
+                print(f"Not floating {filename}:{node.get_lineno()} as inside try")
+                print(f"! {node.children[1]}")
+                return
+            if root.type == python_symbols.if_stmt and not IGNORE_IF:
+                print(
+                    f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside if"
+                )
+                print(f"! {node.children[1]}")
+                return
         root = root.parent
 
     # Find the insertion point for this root node
@@ -279,6 +301,9 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         # statement node's indentation is handled by the indent. So we
         # need to remove the indentation from the next sibling.
         next_sibling.prefix = next_sibling.prefix.lstrip(" ")
+
+    # We could be transplanting a node with a prefix. Move it to the sibling
+    next_sibling.prefix = node.prefix.rstrip(" ") + next_sibling.prefix
 
     # Do the actual moving
     statement.remove()
@@ -398,6 +423,22 @@ def x():
         something
     if x:
         pass
+"""
+    checker(origin, out)
+
+
+def test_whitelisted_import_comments(checker):
+    origin = """
+def x():
+    # Some comment
+    import os
+    pass
+"""
+    out = """import os
+
+def x():
+    # Some comment
+    pass
 """
     checker(origin, out)
 
