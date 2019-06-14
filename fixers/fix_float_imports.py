@@ -179,18 +179,53 @@ def find_import_insert_point(node):
     return i
 
 
+def find_prev_leaf(node: LN) -> LN:
+    """Find the previous leaf of a node in a node tree.
+
+    This works even if the node is the first child of it's parent - the
+    tree will be walked up until there is a previous sibling and then
+    walk back down the tree.
+    """
+    # Move to previous node
+    if node.prev_sibling is None:
+        # Walk to a parent to get the sibling
+        while node.prev_sibling is None:
+            # If the parent is None and sibling is None, we're at the top. Give up.
+            if node.parent is None:
+                return None
+            node = node.parent
+    node = node.prev_sibling
+    # Now navigate down the tree to the last leaf
+    while node.children:
+        node = node.children[-1]
+    return node
+
+
+def get_dedented_prefix(node: LN) -> str:
+    """Get a prefix for a node, even including ones attached to previous dedents.
+
+    This is because with dedenting, the graph can look like:
+        │ │  └─Leaf(DEDENT, prefix='Something')
+        │ └─Leaf(DEDENT, prefix='')
+        ├─Node[simple_stmt, prefix='']
+        │ ├─Node[import_from, prefix='']
+    and therefore the prefix isn't attached to the node itself
+    """
+    prefix = node.prefix
+    node = find_prev_leaf(node)
+    while node and node.type in {token.DEDENT}:
+        prefix = str(node) + prefix
+        node = find_prev_leaf(node)
+    return prefix
+
+
 def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[LN]:
     # Skip any imports at file scope
     if node.parent.parent.type == python_symbols.file_input:
         return
-    # print(f"{filename}:{node.get_lineno()}")
-    # print_node(node.parent)
-
-    # if "rstbx.array_family" in str(node):
-    #     breakpoint()
 
     # Bypass nodes with comments for now
-    if node.prefix.strip() or node.get_suffix().strip():
+    if node.get_suffix().strip() or get_dedented_prefix(node).strip():
         print(f"Not floating {filename}:{node.get_lineno()} as has comments")
         return
 
