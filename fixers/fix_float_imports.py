@@ -201,8 +201,8 @@ def find_prev_leaf(node: LN) -> LN:
     return node
 
 
-def get_dedented_prefix(node: LN) -> str:
-    """Get a prefix for a node, even including ones attached to previous dedents.
+def get_complete_prefix(node: LN) -> str:
+    """Get a prefix for a node, even including ones attached to previous whitespace.
 
     This is because with dedenting, the graph can look like:
         │ │  └─Leaf(DEDENT, prefix='Something')
@@ -213,7 +213,7 @@ def get_dedented_prefix(node: LN) -> str:
     """
     prefix = node.prefix
     node = find_prev_leaf(node)
-    while node and node.type in {token.DEDENT}:
+    while node and node.type in {token.DEDENT, token.INDENT}:
         prefix = str(node) + prefix
         node = find_prev_leaf(node)
     return prefix
@@ -225,7 +225,7 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         return
 
     # Bypass nodes with comments for now
-    if node.get_suffix().strip() or get_dedented_prefix(node).strip():
+    if node.get_suffix().strip() or get_complete_prefix(node).strip():
         print(f"Not floating {filename}:{node.get_lineno()} as has comments")
         return
 
