@@ -145,34 +145,29 @@ def join_comma(entries):
 #           parting tokens: token.COMMA
 
 
-def find_root_insertion_point(node):
-    # Walk up to the root
-    while node.parent:
-        node = node.parent
-    assert node.type == python_symbols.file_input
-
-    for i, n in enumerate(node.children):
-        if not n.type == python_symbols.simple_stmt:
-            break
-        if n.children[0].type not in {
-            python_symbols.import_name,
-            python_symbols.import_from,
-            token.STRING,
-        }:
-            break
-
-    # Find the first non-import, non-string child
-    return (node, i)
-
-
 def find_import_insert_point(node):
+    past_docstring = False
     for i, n in enumerate(node.children):
         if not n.type == python_symbols.simple_stmt:
             break
+        child_node = n.children[0]
+        # If it's a non-future import then we're past the docstring
+        if (
+            not past_docstring
+            and child_node.type == python_symbols.import_from
+            and child_node.children[1] != "__future__"
+        ):
+            past_docstring = True
+
+        # If we're not past the docstring and this is a string, then
+        # this IS the docstring and so we don't want this
+        if not past_docstring and child_node.type == token.STRING:
+            past_docstring = True
+            continue
+
         if n.children[0].type not in {
             python_symbols.import_name,
             python_symbols.import_from,
-            token.STRING,
         }:
             break
 
