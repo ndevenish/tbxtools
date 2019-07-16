@@ -527,9 +527,9 @@ def _read_autogen_information(filename, tbx):
 
     if filename:
         with open(filename) as f:
-            data = yaml.load(f)
+            data = yaml.safe_load(f)
     else:
-        data = yaml.load(pkgutil.get_data("tbxtools.tbx2cmake", "build_info.yaml"))
+        data = yaml.safe_load(pkgutil.get_data("tbxtools.tbx2cmake", "build_info.yaml"))
 
     # Load the list of module-refresh-generated files
     for modname, value in data.get("libtbx_refresh", {}).items():
