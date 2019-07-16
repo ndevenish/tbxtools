@@ -134,7 +134,7 @@ def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
                     modules[name].path, new_module.path, proposed[0].path
                 )
             )
-            modules[name] = proposed[0]
+            new_module = proposed[0]
         modules[name] = new_module
     return modules.values()
 
