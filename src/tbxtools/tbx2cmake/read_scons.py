@@ -101,10 +101,42 @@ def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
                 subdirs.append(os.path.join(repo, dirname))
 
     # All subdirs == all modules, as far as libtbx logic goes. Filter them later.
+    modules = {}
     for dirname in subdirs:
         name = os.path.basename(dirname)
         path = dirname
-        yield LibTBXModule(name=name, path=path, module_root=modulepath)
+        # Hard-coded ignore names - last resort
+        if name == "__pycache__":
+            continue
+        # If we have the same name twice (dxtbx, boost), try to resolve
+        new_module = LibTBXModule(name=name, path=path, module_root=modulepath)
+        if name in modules:
+            proposed = [x for x in [modules[name], new_module] if x.looks_like_module]
+            if len(proposed) != 1:
+                logger.debug(
+                    "Cannot disambiguate {} and {}; resorting to .py check".format(
+                        modules[name].path, new_module.path
+                    )
+                )
+                proposed = [
+                    x
+                    for x in [modules[name], new_module]
+                    if any(Path(x.path).glob("*.py"))
+                ]
+            if len(proposed) != 1:
+                raise RuntimeError(
+                    "Cannot decide between module candidates of {} and {}".format(
+                        modules[name].path, new_module.path
+                    )
+                )
+            logger.info(
+                "Resolving module ambiguity between {} and {} = {}".format(
+                    modules[name].path, new_module.path, proposed[0].path
+                )
+            )
+            modules[name] = proposed[0]
+        modules[name] = new_module
+    return modules.values()
 
 
 class TargetCollection(collections.Set):
