@@ -32,6 +32,7 @@ PATTERN = """import_name | import_from"""
 LIBS = set()
 LIB_USES = {}
 
+
 def print_node(node: LN, max_depth: int = 1000, indent: str = "", last: bool = True):
     """Debugging function to print node tree.
     Arguments:
@@ -215,8 +216,8 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
     # print_node(node)
     # if "ext" in str(node):
     #     print(f"Found clue in {filename}")
-        # print_node(node)
-        # breakpoint()
+    # print_node(node)
+    # breakpoint()
 
     # Reduce this down to the root import name
     # Can ignore e.g. DOT for now as this will never be relative imports
@@ -252,102 +253,100 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
 # dotted_name: NAME ('.' NAME)*
 
 
+# # Skip any imports at file scope
+# if node.parent.parent.type == python_symbols.file_input:
+#     return
 
+# IMPORT_WHITELIST = {
+#     "importlib",
+#     "math",
+#     "optparse",
+#     "os",
+#     "six.moves.cPickle as pickle",
+#     "six.moves",
+#     "sys",
+#     "urllib2",
+#     "uuid",
+# }
 
-    # # Skip any imports at file scope
-    # if node.parent.parent.type == python_symbols.file_input:
-    #     return
+# always_float = str(node.children[1]).strip() in IMPORT_WHITELIST
+# if not always_float:
+#     # Bypass nodes with comments for now
+#     if node.get_suffix().strip() or get_complete_prefix(node).strip():
+#         print(
+#             f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as has comments"
+#         )
+#         print(f"! {node.children[1]}")
+#         return
 
-    # IMPORT_WHITELIST = {
-    #     "importlib",
-    #     "math",
-    #     "optparse",
-    #     "os",
-    #     "six.moves.cPickle as pickle",
-    #     "six.moves",
-    #     "sys",
-    #     "urllib2",
-    #     "uuid",
-    # }
+#     if "matplotlib" in str(node):
+#         print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
+#         return
 
-    # always_float = str(node.children[1]).strip() in IMPORT_WHITELIST
-    # if not always_float:
-    #     # Bypass nodes with comments for now
-    #     if node.get_suffix().strip() or get_complete_prefix(node).strip():
-    #         print(
-    #             f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as has comments"
-    #         )
-    #         print(f"! {node.children[1]}")
-    #         return
+# # Find the root node. While doing so, check that we aren't inside a try
+# root = node
+# while root.parent:
+#     if not always_float:
+#         if root.type == python_symbols.try_stmt:
+#             print(f"Not floating {filename}:{node.get_lineno()} as inside try")
+#             print(f"! {node.children[1]}")
+#             return
+#         if root.type == python_symbols.if_stmt and not IGNORE_IF:
+#             print(
+#                 f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside if"
+#             )
+#             print(f"! {node.children[1]}")
+#             return
+#     root = root.parent
 
-    #     if "matplotlib" in str(node):
-    #         print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
-    #         return
+# # Find the insertion point for this root node
+# insert_point = find_import_insert_point(root)
 
-    # # Find the root node. While doing so, check that we aren't inside a try
-    # root = node
-    # while root.parent:
-    #     if not always_float:
-    #         if root.type == python_symbols.try_stmt:
-    #             print(f"Not floating {filename}:{node.get_lineno()} as inside try")
-    #             print(f"! {node.children[1]}")
-    #             return
-    #         if root.type == python_symbols.if_stmt and not IGNORE_IF:
-    #             print(
-    #                 f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside if"
-    #             )
-    #             print(f"! {node.children[1]}")
-    #             return
-    #     root = root.parent
+# # Get the actual statement node
+# statement = node.parent
+# prev_sibling = statement.prev_sibling
+# next_sibling = statement.next_sibling
+# assert statement.type == python_symbols.simple_stmt
 
-    # # Find the insertion point for this root node
-    # insert_point = find_import_insert_point(root)
+# # Are we are the start of a scope?
+# parent_index = statement.parent.children.index(statement)
+# # From suite definition; parent_index of first statement is either 0 or 2:
+# #   suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
+# # But for our purposes can be 3 if we have a docstring.
+# assert parent_index != 0, "Inline statement functions not supported ATM"
+# prev_sibiling_is_string = (
+#     prev_sibling.type == python_symbols.simple_stmt
+#     and prev_sibling.children[0].type == token.STRING
+# )
+# if parent_index == 2 or (parent_index == 3 and prev_sibiling_is_string):
+#     # We're the first statement, or the first non-docstring statement.
+#     # If we have a trailing newline, remove it. Indentation handled later.
+#     if next_sibling and next_sibling.prefix.startswith("\n"):
+#         next_sibling.prefix = next_sibling.prefix[1:]
 
-    # # Get the actual statement node
-    # statement = node.parent
-    # prev_sibling = statement.prev_sibling
-    # next_sibling = statement.next_sibling
-    # assert statement.type == python_symbols.simple_stmt
+# # Get the previous node. This might be the sibling, or some tree-child thereof
+# prev_node = list(prev_sibling.leaves())[-1]
 
-    # # Are we are the start of a scope?
-    # parent_index = statement.parent.children.index(statement)
-    # # From suite definition; parent_index of first statement is either 0 or 2:
-    # #   suite: simple_stmt | NEWLINE INDENT stmt+ DEDENT
-    # # But for our purposes can be 3 if we have a docstring.
-    # assert parent_index != 0, "Inline statement functions not supported ATM"
-    # prev_sibiling_is_string = (
-    #     prev_sibling.type == python_symbols.simple_stmt
-    #     and prev_sibling.children[0].type == token.STRING
-    # )
-    # if parent_index == 2 or (parent_index == 3 and prev_sibiling_is_string):
-    #     # We're the first statement, or the first non-docstring statement.
-    #     # If we have a trailing newline, remove it. Indentation handled later.
-    #     if next_sibling and next_sibling.prefix.startswith("\n"):
-    #         next_sibling.prefix = next_sibling.prefix[1:]
+# # print_node(prev_node)
+# if prev_node.type in {token.INDENT, token.DEDENT}:
+#     # If we just indented(dedented) then tree looks like:
+#     #   [INDENT]      "    "
+#     #   [simple_stmt] ""            <- statement
+#     #       ...
+#     #       [NEWLINE] ""      "\n"
+#     #   [LN]          "    "
+#     # e.g. this next sibling node holds it's own indent but the
+#     # statement node's indentation is handled by the indent. So we
+#     # need to remove the indentation from the next sibling.
+#     next_sibling.prefix = next_sibling.prefix.lstrip(" ")
 
-    # # Get the previous node. This might be the sibling, or some tree-child thereof
-    # prev_node = list(prev_sibling.leaves())[-1]
+# # We could be transplanting a node with a prefix. Move it to the sibling
+# next_sibling.prefix = node.prefix.rstrip(" ") + next_sibling.prefix
 
-    # # print_node(prev_node)
-    # if prev_node.type in {token.INDENT, token.DEDENT}:
-    #     # If we just indented(dedented) then tree looks like:
-    #     #   [INDENT]      "    "
-    #     #   [simple_stmt] ""            <- statement
-    #     #       ...
-    #     #       [NEWLINE] ""      "\n"
-    #     #   [LN]          "    "
-    #     # e.g. this next sibling node holds it's own indent but the
-    #     # statement node's indentation is handled by the indent. So we
-    #     # need to remove the indentation from the next sibling.
-    #     next_sibling.prefix = next_sibling.prefix.lstrip(" ")
-
-    # # We could be transplanting a node with a prefix. Move it to the sibling
-    # next_sibling.prefix = node.prefix.rstrip(" ") + next_sibling.prefix
-
-    # # Do the actual moving
-    # statement.remove()
-    # root.insert_child(insert_point, statement)
-    # node.prefix = ""
+# # Do the actual moving
+# statement.remove()
+# root.insert_child(insert_point, statement)
+# node.prefix = ""
 
 
 def main():
@@ -364,7 +363,10 @@ def main():
     #     "--ignoreif", action="store_true", help="Float from inside if statements"
     # )
     parser.add_argument(
-        "library_path", metavar="LIBDIR", nargs="?", help="Where to find built libraries"
+        "library_path",
+        metavar="LIBDIR",
+        nargs="?",
+        help="Where to find built libraries",
     )
     args = parser.parse_args()
 
@@ -383,7 +385,6 @@ def main():
     with open("libs.list", "w") as f:
         f.write(pformat(LIB_USES))
     print("Wrote results to libs.list")
-
 
 
 # @pytest.fixture
