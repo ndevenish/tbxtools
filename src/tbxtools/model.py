@@ -45,6 +45,7 @@ class Module(object):
             "exclude_from_binary_bundle": set(),
             # Extra paths (other than ".") to look for command_line subfolders
             "extra_command_line_locations": set(),
+            "python_required": set(),
         }
 
         # Load information about this module from the libtbx_config... if there is one
