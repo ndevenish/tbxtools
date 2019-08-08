@@ -170,34 +170,42 @@ def find_import_insert_point(node):
 
     return i
 
-
 def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[LN]:
     # Skip any imports at file scope
     if node.parent.parent.type == python_symbols.file_input:
         return
-    # print(f"{filename}:{node.get_lineno()}")
-    # print_node(node.parent)
 
-    # if "rstbx.array_family" in str(node):
-    #     breakpoint()
+   # if node.type == python_symbols.import_from:
+    is_stdlib = False
+    if node.type == python_symbols.import_name and node.children[1].type == token.NAME:
+        import_name = node.children[1].value
+        if import_name in {"sys"}:
+          is_stdlib = True
 
-    # Bypass nodes with comments for now
-    if node.prefix.strip() or node.get_suffix().strip():
-        print(f"Not floating {filename}:{node.get_lineno()} as has comments")
-        return
+    # If stdlib, then we definitely want to float
+    if not is_stdlib:
+        # Bypass nodes with comments for now
+        if node.prefix.strip() or node.get_suffix().strip():
+            print(f"Not floating {filename}:{node.get_lineno()} as has comments")
+            return
 
-    if "matplotlib" in str(node):
-        print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
-        return
+        if "matplotlib" in str(node):
+            print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
+            return
+        #if "h5py" in str(node):
+        #    print(f"Not floating {filename}:{node.get_lineno()} as h5py")
+        #    return
 
     # Find the root node. While doing so, check that we aren't inside a try
     root = node
     while root.parent:
-        if root.type == python_symbols.try_stmt:
+        if root.type == python_symbols.try_stmt and not is_stdlib:
             print(f"Not floating {filename}:{node.get_lineno()} as inside try")
+            print("    " + str(node).replace('\n', '\\n'))
             return
-        if root.type == python_symbols.if_stmt and not IGNORE_IF:
+        if root.type == python_symbols.if_stmt and not IGNORE_IF and not is_stdlib:
             print(f"Not floating {filename}:{node.get_lineno()} as inside if")
+            print("    " + str(node).replace('\n', '\\n'))
             return
         root = root.parent
 
