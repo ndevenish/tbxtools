@@ -1,15 +1,15 @@
 repos:
 -   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v4.3.20
+    rev: v4.3.21
     hooks:
     -   id: isort
 -   repo: https://github.com/ambv/black
-    rev: 18.9b0
+    rev: 19.3b0
     hooks:
     - id: black
       language_version: python3
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.0.0  # Use the ref you want to point at
+    rev: v2.3.0  # Use the ref you want to point at
     hooks:
     -   id: flake8
         language_version: python3
@@ -17,6 +17,6 @@ repos:
         language_version: python3
     # -   id: ...
 -   repo: git://github.com/detailyang/pre-commit-shell
-    sha: 1.0.4
+    rev: 1.0.5
     hooks:
     - id: shell-lint
