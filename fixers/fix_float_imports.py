@@ -238,7 +238,6 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
             print(
                 f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as has comments"
             )
-            print(f"! {node.children[1]}")
             return
 
         if "matplotlib" in str(node):
@@ -251,13 +250,20 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         if not always_float:
             if root.type == python_symbols.try_stmt:
                 print(f"Not floating {filename}:{node.get_lineno()} as inside try")
-                print(f"! {node.children[1]}")
+                return
+            if (
+                root.type == python_symbols.if_stmt
+                and not IGNORE_IF
+                and "__main__" in str(root.children[1])
+            ):
+                print(
+                    f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside __main__ test if"
+                )
                 return
             if root.type == python_symbols.if_stmt and not IGNORE_IF:
                 print(
                     f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside if"
                 )
-                print(f"! {node.children[1]}")
                 return
         root = root.parent
 
