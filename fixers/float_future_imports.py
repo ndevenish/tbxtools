@@ -16,15 +16,20 @@ This is useful for tidiness but also required because not running the
 full futurize stage2 doesn't go back and fixup the split import
 declarations.
 """
-import sys
+import argparse
 from typing import List, Optional
 
+import fissix.pgen2
 from bowler import Query
 from bowler.types import LN, Capture, Filename
 from fissix.fixer_util import Comma, Name
 from fissix.pgen2 import token
 from fissix.pygram import python_symbols
 from fissix.pytree import Node
+
+driver = fissix.pgen2.driver.Driver(
+    fissix.pygram.python_grammar, convert=fissix.pytree.convert
+)
 
 UPDATE_MODE = False
 
@@ -79,6 +84,36 @@ def join_comma(entries: List[LN]) -> List[LN]:
     return out
 
 
+def find_future_import_insert_point(node):
+    past_docstring = False
+    for i, n in enumerate(node.children):
+        if not n.type == python_symbols.simple_stmt:
+            break
+        child_node = n.children[0]
+        # If it's a non-future import then we're past the docstring
+        if (
+            not past_docstring
+            and child_node.type == python_symbols.import_from
+            and child_node.children[1] != "__future__"
+        ):
+            past_docstring = True
+
+        # If we're not past the docstring and this is a string, then
+        # this IS the docstring and so we don't want this
+        if not past_docstring and child_node.type == token.STRING:
+            past_docstring = True
+            continue
+
+        return i
+        # if n.children[0].type not in {
+        #     python_symbols.import_name,
+        #     python_symbols.import_from,
+        # }:
+        #     break
+
+    return i
+
+
 def process_root(node: LN, capture: Capture, filename: Filename) -> Optional[LN]:
     print(filename)
     # Find any imports close to the root level
@@ -91,6 +126,17 @@ def process_root(node: LN, capture: Capture, filename: Filename) -> Optional[LN]
     ]
     # # Do nothing if one
     if len(imports) <= 1 and not UPDATE_MODE:
+        return
+    elif len(imports) == 0:
+        # Find the root node
+        root = node
+        while node.parent:
+            node = node.parent
+        import_insert_point = find_future_import_insert_point(root)
+        insert = driver.parse_string(
+            "from __future__ import absolute_import, division, print_function\n"
+        )
+        root.children.insert(import_insert_point, insert)
         return
 
     # Extract the list of __future__ imports from all of these
@@ -127,24 +173,28 @@ def process_root(node: LN, capture: Capture, filename: Filename) -> Optional[LN]
 
 def main():
     """Runs the query. Called by bowler if run as a script"""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--do", action="store_true", help="Actually write the changes")
+    parser.add_argument(
+        "--silent", action="store_true", help="Do the processing quietly"
+    )
+    parser.add_argument(
+        "--update", action="store_true", help="Update along with pure floating"
+    )
+    parser.add_argument(
+        "filenames", metavar="FILE", nargs="*", help="Specific filenames to process"
+    )
+    args = parser.parse_args()
 
-    do_write = "--do" in sys.argv
-    do_silent = "--silent" in sys.argv
     # Hack in a separate mode for updating everything for py3
     global UPDATE_MODE
-    UPDATE_MODE = "--update" in sys.argv
-
-    filenames = [x for x in sys.argv[1:] if not x.startswith("-")]
-    if filenames:
-        print(f"Got {len(filenames)} files to process")
-    else:
-        sys.exit("No files specified")
+    UPDATE_MODE = args.update
 
     (
-        Query(filenames)
+        Query(args.filenames)
         .select_root()
         .modify(process_root)
-        .execute(interactive=False, write=do_write, silent=do_silent)
+        .execute(interactive=False, write=args.do, silent=args.silent)
     )
 
 
