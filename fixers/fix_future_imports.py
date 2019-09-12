@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-Combine any __future__ imports by floating the names to the first one.
+Fixing up of __future__ imports.
 
-e.g. combines
+- Combine any __future__ imports by floating the names to the first one.
+- Remove obselete __future__ imports and add the standard set
+
+Only the floating will be done if --floatonly has been passed. For the
+floating this is e.g. combining
     from __future__ import division
     from __future__ import print_function
     ...
@@ -31,7 +35,7 @@ driver = fissix.pgen2.driver.Driver(
     fissix.pygram.python_grammar, convert=fissix.pytree.convert
 )
 
-UPDATE_MODE = False
+FLOAT_MODE = False
 
 
 def get_children(
@@ -84,7 +88,7 @@ def join_comma(entries: List[LN]) -> List[LN]:
     return out
 
 
-def find_future_import_insert_point(node):
+def find_future_import_insert_point(node: Node):
     past_docstring = False
     for i, n in enumerate(node.children):
         if not n.type == python_symbols.simple_stmt:
@@ -124,22 +128,19 @@ def process_root(node: LN, capture: Capture, filename: Filename) -> Optional[LN]
         )
         if x.children[1].type == token.NAME and x.children[1].value == "__future__"
     ]
-    # # Do nothing if one
-    if len(imports) <= 1 and not UPDATE_MODE:
+    if len(imports) <= 1 and FLOAT_MODE:
+        # Do nothing if one or no imports and only in float-mode
         return
     elif len(imports) == 0:
-        # Find the root node
-        root = node
-        while node.parent:
-            node = node.parent
-        import_insert_point = find_future_import_insert_point(root)
+        # We're in update mode - add missing __future__ imports
+        import_insert_point = find_future_import_insert_point(node)
         insert = driver.parse_string(
             "from __future__ import absolute_import, division, print_function\n"
         )
-        root.children.insert(import_insert_point, insert)
+        node.children.insert(import_insert_point, insert)
         return
 
-    # Extract the list of __future__ imports from all of these
+    # Extract the list of __future__ imports from all of the import statements
     future_names = set()
     for imp in imports:
         if imp.children[3].type == token.NAME:
@@ -148,7 +149,8 @@ def process_root(node: LN, capture: Capture, filename: Filename) -> Optional[LN]
             future_names.update(
                 {x.value for x in get_children(imp.children[3], token.NAME)}
             )
-    if UPDATE_MODE:
+    # If we're not purely floating, update the list of names
+    if not FLOAT_MODE:
         # If present, make all the basics present
         if future_names:
             future_names |= {"absolute_import", "division", "print_function"}
@@ -179,7 +181,7 @@ def main():
         "--silent", action="store_true", help="Do the processing quietly"
     )
     parser.add_argument(
-        "--update", action="store_true", help="Update along with pure floating"
+        "--onlyfloat", action="store_true", help="Only float, don't also fixup"
     )
     parser.add_argument(
         "filenames", metavar="FILE", nargs="*", help="Specific filenames to process"
@@ -187,8 +189,8 @@ def main():
     args = parser.parse_args()
 
     # Hack in a separate mode for updating everything for py3
-    global UPDATE_MODE
-    UPDATE_MODE = args.update
+    global FLOAT_MODE
+    FLOAT_MODE = args.onlyfloat
 
     (
         Query(args.filenames)
