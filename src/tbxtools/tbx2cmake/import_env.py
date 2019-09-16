@@ -4,18 +4,17 @@
 Prepares the import environment for running the tbx SCons scripts
 """
 
+import logging
 import os
-import sys
 import re
+import sys
 from types import ModuleType
-from mock import Mock
 
-from .utils import AttrDict
+from mock import Mock
 
 # from .sconsemu import no_intercept_os
 from .intercept import no_intercept_os
-
-import logging
+from .utils import AttrDict
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +263,7 @@ def do_import_patching(dist_path):
     libtbx.env_config.unique_paths = _unique_paths
     libtbx.env_config.darwin_shlinkcom = _tbx_darwin_shlinkcom
     libtbx.env_config.get_gcc_version = _get_gcc_version_50400
-    libtbx.env_config.get_boost_library_with_python_version = lambda m,l: ""
+    libtbx.env_config.get_boost_library_with_python_version = lambda m, _: m
     # def get_gcc_version(command_name="gcc"):
 
     libtbx.utils.select_matching = _libtbx_select_matching
