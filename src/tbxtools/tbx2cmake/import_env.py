@@ -264,11 +264,13 @@ def do_import_patching(dist_path):
     libtbx.env_config.unique_paths = _unique_paths
     libtbx.env_config.darwin_shlinkcom = _tbx_darwin_shlinkcom
     libtbx.env_config.get_gcc_version = _get_gcc_version_50400
+    libtbx.env_config.get_boost_library_with_python_version = lambda m,l: ""
     # def get_gcc_version(command_name="gcc"):
 
     libtbx.utils.select_matching = _libtbx_select_matching
     libtbx.utils.warn_if_unexpected_md5_hexdigest = Mock()
     libtbx.utils.write_this_is_auto_generated = Mock()
+    libtbx.utils.Sorry = RuntimeError
 
     libtbx.env = libtbxEnv(dist_path)
     libtbx.easy_run = new_module("libtbx.easy_run")
