@@ -35,7 +35,8 @@ dependencies:
   dxtbxspotfinder: spotfinder # This is a definitely missing dependency that relies on undefined
   dials_algorithms_integration_parallel_integrator_ext: boost_thread # Uses, but doesn't declare
   iotbx_xplor_ext: scitbx
-  dials_array_family_flex_ext: msgpackc-cxx
+  # dials_array_family_flex_ext: msgpackc-cxx # This is maybe unnecessary?
+  smtbx_refinement_least_squares_ext: boost_thread
 
 
 
