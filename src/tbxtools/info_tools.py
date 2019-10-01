@@ -2,12 +2,13 @@
 
 from __future__ import absolute_import, division, print_function
 
-import sys
 import logging
+import sys
 import textwrap
 
-from .model import Distribution
 from docopt import docopt
+
+from .model import Distribution
 
 # List of modules to allow to be missing
 # ALLOW_MISSING = {"boost"}
@@ -15,23 +16,23 @@ from docopt import docopt
 
 def run_expand_dependencies():
     """
-  Expand a list of modules to include all dependencies.
+    Expand a list of modules to include all dependencies.
 
-  Modules can be passed in as individual items, but a CMake-style semicolon-
-  separated list will also be accepted.
+    Modules can be passed in as individual items, but a CMake-style semicolon-
+    separated list will also be accepted.
 
-  Usage:  tbx-expand-deps [options] [--optional=MOD]...
-              <distribution> [<module> [<module> ...]]
-          tbx-expand-deps -h | --help
+    Usage:  tbx-expand-deps [options] [--optional=MOD]...
+                <distribution> [<module> [<module> ...]]
+            tbx-expand-deps -h | --help
 
-  Options:
-    -h --help       Display this message
-    --cmake         Return the output list in a semicolon-separated, cmake-style list
-    --graphviz      Return a Graphviz dot-format directed graph
-    -v, --verbose   Debugging output
-    --optional MOD  Always treat a module as optional, even if normally required.
-                    This can be used to handle otherwise missing modules.
-  """
+    Options:
+        -h --help       Display this message
+        --cmake         Return the output list in a semicolon-separated, cmake-style list
+        --graphviz      Return a Graphviz dot-format directed graph
+        -v, --verbose   Debugging output
+        --optional MOD  Always treat a module as optional, even if normally required.
+                        This can be used to handle otherwise missing modules.
+    """
 
     options = docopt(textwrap.dedent(run_expand_dependencies.__doc__))
     logging.basicConfig(
