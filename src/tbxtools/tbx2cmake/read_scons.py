@@ -8,15 +8,15 @@ import collections
 import itertools
 import logging
 import os
-from pathlib import PurePosixPath, Path
 import sys
+from pathlib import Path, PurePosixPath
 
 import networkx as nx
 import six
 import yaml
 
-from .utils import return_as_list
 from .sconsemu import SconsEmulator, Target
+from .utils import return_as_list
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
                 proposed = [
                     x
                     for x in [modules[name], new_module]
-                    if any(Path(x.path).glob("*.py"))
+                    if any((modulepath / Path(x.path)).glob("*.py"))
                 ]
             if len(proposed) != 1:
                 raise RuntimeError(
