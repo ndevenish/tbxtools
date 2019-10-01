@@ -3,3 +3,6 @@
 .cache/
 ENV/
 .tox/
+.vscode/
+.mypy_cache/
+
