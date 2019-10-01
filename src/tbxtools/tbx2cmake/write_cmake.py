@@ -22,23 +22,24 @@ Options:
 
 import logging
 import os
-from pathlib import PurePosixPath, Path
 import pkgutil
 import posixpath
 import sys
+from pathlib import Path, PurePosixPath
+
+import six
+import yaml
+from docopt import docopt
+
+from .read_scons import read_distribution
+from .sconsemu import Target
+from .utils import fully_split_path
 
 try:
     from typing import Set
 except ImportError:
     pass
 
-from docopt import docopt
-import yaml
-import six
-
-from .utils import fully_split_path
-from .read_scons import read_distribution
-from .sconsemu import Target
 
 logger = logging.getLogger()
 
@@ -98,6 +99,9 @@ class CMakeLists(object):
         if parts[0] in {"", "."}:
             return self
         else:
+            # Skip over the cctbx_project subdir for a module-based root
+            if parts[0] == "cctbx_project":
+                parts = [os.path.join(*parts[:2])] + parts[2:]
             if not parts[0] in self.subdirectories:
                 subdir = CMakeLists(parts[0], parent=self)
                 self.subdirectories[parts[0]] = subdir
