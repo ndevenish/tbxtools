@@ -2,18 +2,18 @@
 
 
 import copy
-from enum import Enum
 import inspect
 import logging
 import os
-from pathlib import PurePosixPath, WindowsPath, PosixPath
 import posixpath
 import sys
 import traceback
+from enum import Enum
+from pathlib import PosixPath, PurePosixPath, WindowsPath
 
 import six
 
-from .import_env import do_import_patching
+from .import_env import MissingDistError, do_import_patching
 from .intercept import SystemEnvInterceptor, no_intercept_os
 from .utils import InjectableModule
 
@@ -514,6 +514,8 @@ class SconsEmulator(object):
                 self.parse_sconscript(Path(scons))
         except SyntaxError as e:
             logger.error("SyntaxError parsing %s: %s (ignoring)", module.name, str(e))
+        except MissingDistError as e:
+            logger.error("Missing SConscript dependency in %s: %s", module.name, str(e))
 
     def sconscript_command(self, name, exports=None):
         newpath = self._current_sconscript.parent / PurePosixPath(name)

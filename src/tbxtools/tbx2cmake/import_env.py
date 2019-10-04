@@ -19,6 +19,10 @@ from .utils import AttrDict
 logger = logging.getLogger(__name__)
 
 
+class MissingDistError(RuntimeError):
+    pass
+
+
 class FakePath(object):
     pass
 
@@ -99,6 +103,7 @@ class libtbxEnv(object):
         # never be asked for the path of a module that doesn't exist - if we
         # do, we should probably return something but this is a relatively
         # untested path
+        raise MissingDistError("Could not find dist path for module " + module)
         assert False, "Couldnt find real dist path"
         ret = "DISTPATH[{}]/".format(module)
         logger.debug("   returning {} ".format(ret))
