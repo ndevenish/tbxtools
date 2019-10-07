@@ -23,7 +23,7 @@ setup(
         'networkx<2.3;python_version<"3"',
         'networkx~=2.3;python_version>"3"',
         "pyyaml",
-        "mock",
+        "mock;python_version<'3.3'",
     ],
     package_data={"tbxtools.tbx2cmake": ["build_info.yaml"]},
 )
