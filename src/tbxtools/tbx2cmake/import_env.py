@@ -10,11 +10,15 @@ import re
 import sys
 from types import ModuleType
 
-from mock import Mock
-
 # from .sconsemu import no_intercept_os
 from .intercept import no_intercept_os
 from .utils import AttrDict
+
+try:
+    from unittest.mock import Mock
+except ImportError:
+    from mock import Mock
+
 
 logger = logging.getLogger(__name__)
 
