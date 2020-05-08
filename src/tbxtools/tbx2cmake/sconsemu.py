@@ -445,6 +445,10 @@ class _fake_system_env(object):
             return True
         if path == "DISTPATH/boost/boost/system":
             return True
+        # Hack - we depend on ncdist without specifying
+        if path.endswith("ncdist"):
+            logger.warning("Looking for package ncdist via filesystem lookup; ignoring")
+            return False
 
         logger.debug("IS DIR: {}".format(path))
         # Everything exists for sconsscripts!
