@@ -106,6 +106,9 @@ required_optional_external:
   boost_adaptbx_boost_thread_test_ext: [boost_thread]
   dials_algorithms_integration_parallel_integrator_ext: [boost_thread]
   gltbx: [GL, GLU]
+  # fast_linalg depends on lapack somehow. Bench depends on fast_linalg.
+  fast_linalg: [lapack]
+  bench: [fast_linalg]
 
 # Optional dependencies; things that targets can do without but will use
 # if present. The target will always be defined, but if this dependency is

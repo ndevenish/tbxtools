@@ -63,6 +63,7 @@ DEPENDENCY_RENAMES = {
     "png": "PNG::PNG",
     "gtest": "GTest::GTest",
     "gtest_main": "GTest::Main",
+    "lapack": "Lapack::Lapack",
 }
 
 # Global optional dependencies - unless a module/target has an explicit
