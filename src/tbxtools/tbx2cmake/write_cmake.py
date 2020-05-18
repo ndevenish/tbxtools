@@ -481,9 +481,7 @@ class CMLProgramOutput(CMLLibraryOutput):
 
     def _get_target_location_setter(self):
         # Executables, we always know what type they are
-        return (
-            'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'
-        )  # noqa: E501
+        return 'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'  # noqa: E501
 
     def __str__(self):
         # If we have no
