@@ -330,6 +330,18 @@ class CMLLibraryOutput(CMakeListBlock):
   RUNTIME_OUTPUT_DIRECTORY "{1:}"
 )"""
 
+    def _get_extra_libs(self):
+        extra_libs = (
+            self.target.extra_libs - OPTIONAL_DEPENDS - self.target.optional_extra_libs
+        ) | self.target.required_optional
+
+        # extra_libs = self.target.extra_libs -  - self.target.optional_extra_libs
+        if self.is_python_module:
+            extra_libs = extra_libs - {"boost_python"}
+        else:
+            extra_libs |= {"boost"}
+        return extra_libs
+
     def __str__(self):
         add_command = self._get_target_add_string()
         add_lib = add_command.format(self.target.name, self.typename)
@@ -391,9 +403,14 @@ class CMLLibraryOutput(CMakeListBlock):
         # Calculate the library categories
 
         # Libraries that this has a hard dependency on
-        extra_libs = (
-            self.target.extra_libs - OPTIONAL_DEPENDS - self.target.optional_extra_libs
-        ) | self.target.required_optional
+        extra_libs = self._get_extra_libs()
+        if extra_libs:
+            lines.append(
+                "target_link_libraries( {} {} )".format(
+                    self.target.name, " ".join(_target_rename(x) for x in extra_libs)
+                )
+            )
+
         # Libraries that are normally optional, but this target has a hard dependency on
         # required_optional = self.target.required_optional
         # Libraries that are optional - we don't necessarily need them included
@@ -401,18 +418,6 @@ class CMLLibraryOutput(CMakeListBlock):
             (OPTIONAL_DEPENDS & set(self.target.extra_libs))
             | self.target.optional_extra_libs
         ) - self.target.required_optional
-
-        # extra_libs = self.target.extra_libs -  - self.target.optional_extra_libs
-        if self.is_python_module:
-            extra_libs = extra_libs - {"boost_python"}
-        else:
-            extra_libs |= {"boost"}
-        if extra_libs:
-            lines.append(
-                "target_link_libraries( {} {} )".format(
-                    self.target.name, " ".join(_target_rename(x) for x in extra_libs)
-                )
-            )
 
         # Reqired otherwise-optional external libs
         # required_optional = (
@@ -481,7 +486,16 @@ class CMLProgramOutput(CMLLibraryOutput):
 
     def _get_target_location_setter(self):
         # Executables, we always know what type they are
-        return 'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'  # noqa: E501
+        return (
+            'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'
+        )  # noqa: E501
+
+    def _get_extra_libs(self):
+        extra_libs = super()._get_extra_libs()
+        # Add a self-reference because executables aren't done via convenience macro
+        if self.target.module.name not in extra_libs:
+            extra_libs.add(self.target.module.name)
+        return extra_libs
 
     def __str__(self):
         # If we have no
