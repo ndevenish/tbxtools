@@ -25,7 +25,11 @@ dependencies:
   ccp4io: scitbx
   cma_es_ext: scitbx
   # Things built as static on OSX miss out on dependency listings. (might be redundant now we fake env?)
-  scitbx_boost_python: boost_python
+  # scitbx_boost_python: A rare example of a shared library that uses python. Since we're
+  # not transitively including the python dependency in boost now that we're trying to
+  # move to less custom linking, this now needs to explicitly be specified - linking
+  # to the python library seems like the simplest option for now.
+  scitbx_boost_python: [boost_python, "Python::Python"]
   mmtbx_masks: [cctbx, cctbx_sgtbx_asu, omptbx]
   asymmetric_map: [cctbx, cctbx_sgtbx_asu, iotbx_xplor, omptbx]
   iotbx_mtz: [ccp4io, cctbx]
