@@ -80,7 +80,7 @@ class libtbxBuildOptions(object):
 
 
 class libtbxEnv(object):
-    boost_version = 106500
+    boost_version = 107200
 
     def __init__(self, dist_path):
         self.build_options = libtbxBuildOptions()
