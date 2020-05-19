@@ -406,7 +406,7 @@ class CMLLibraryOutput(CMakeListBlock):
         extra_libs = self._get_extra_libs()
         if extra_libs:
             lines.append(
-                "target_link_libraries( {} {} )".format(
+                "target_link_libraries( {} PUBLIC {} )".format(
                     self.target.name, " ".join(_target_rename(x) for x in extra_libs)
                 )
             )
@@ -432,7 +432,7 @@ class CMLLibraryOutput(CMakeListBlock):
                         "",
                         "# Optional dependency on {}".format(option),
                         "if(TARGET {})".format(_target_rename(option)),
-                        "  target_link_libraries({} {})".format(
+                        "  target_link_libraries({} PUBLIC {})".format(
                             self.target.name, _target_rename(option)
                         ),
                         "endif()",
