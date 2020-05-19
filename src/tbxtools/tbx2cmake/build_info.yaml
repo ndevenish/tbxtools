@@ -245,3 +245,9 @@ libtbx_refresh:
   # Dials does setuptools-ish registration stuff
   dials:
     - True
+
+
+# Injected definitions - things that need to be added and we can't work around
+definitions:
+  # USE_CONDA disables usage of an obscure old compatibility symbol
+  boost_python_meta_ext: USE_CONDA

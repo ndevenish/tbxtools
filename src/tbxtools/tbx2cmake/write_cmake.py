@@ -400,6 +400,11 @@ class CMLLibraryOutput(CMakeListBlock):
                 # inclines.append(_append_list_to("    PRIVATE ", include_private))
             lines.append("\n".join(inclines) + " )")
 
+        # If we have definitions...
+        if self.target.definitions:
+            lines.append(
+                f"target_compile_definitions({self.target.name} PRIVATE {' '.join(self.target.definitions)} )"
+            )
         # Calculate the library categories
 
         # Libraries that this has a hard dependency on
@@ -695,6 +700,16 @@ def _read_autogen_information(filename, tbx):
             )
         if inc_target:
             inc_target.include_paths |= set(incs)
+
+    # Handle mandatory definitions
+    for name, defs in data.get("definitions", {}).items():
+        if isinstance(defs, str):
+            defs = [defs]
+        if name in tbx.targets:
+            target = tbx.targets[name]
+            target.definitions.update(defs)
+        else:
+            logger.warning(f"No target {name}. Cannot add definitions {defs}")
 
 
 def _target_rename(name):

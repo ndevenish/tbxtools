@@ -341,6 +341,8 @@ class Target(object):
         self.origin_path = ""
         self.module = None
         self.include_paths = set()
+        # Compiler definitions for this
+        self.definitions = set()
 
         # self.required_optional_extra_libs = set()
         # Extra libs that are used if present, but optional
