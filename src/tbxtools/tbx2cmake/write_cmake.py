@@ -417,7 +417,7 @@ class CMLLibraryOutput(CMakeListBlock):
             )
 
         # Install location, if not handled by macros
-        if self.target.type in {self.target.Type.SHARED, self.target.Type.STATIC}:
+        if self.target.type in {self.target.Type.SHARED}:
             lines.append(f"install(TARGETS {self.target.name} LIBRARY)")
 
         # Libraries that are normally optional, but this target has a hard dependency on
