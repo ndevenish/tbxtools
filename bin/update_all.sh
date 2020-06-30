@@ -6,10 +6,53 @@
 #   cd <DIST>/modules
 #   ./update_all.sh
 
+
+
 RED=$(tput setaf 1)
 BOLD=$(tput bold)
 NC=$(tput sgr0)
-GRAY=$(tput setaf 7)
+
+print_usage()
+{
+  printf 'Usage: %s [-v|--verbose] [-h|--help]\n' "$0"
+}
+print_help()
+{
+	printf 'Update all DIALS modules in current folder\n'
+  print_usage
+	printf '\t%s\n' "-v, --verbose: More detailed debugging output"
+	printf '\t%s\n' "-h, --help: Prints this message"
+}
+
+while test $# -gt 0
+	do
+		_key="$1"
+		case "$_key" in
+			-v|--verbose)
+				_arg_verbose=1
+				shift
+				;;
+			-h|--help)
+				print_help
+				exit 0
+				;;
+			-h*)
+				print_help
+				exit 0
+				;;
+			*)
+				_last_positional="$1"
+				_positionals+=("$_last_positional")
+				_positionals_count=$((_positionals_count + 1))
+				;;
+		esac
+		shift
+	done
+if [[ $_positionals_count -gt 0 ]]; then
+  print_usage
+  echo "${RED}${BOLD}Error${NC}: unknown arguments" "${_positionals[@]}"
+  exit 1
+fi
 
 fail() {
   name=$1
@@ -22,14 +65,17 @@ fail() {
 
 # Check for control master configurations
 if ssh -G github.com | grep -q controlpath; then
-    # HAVE_GITHUBCONTROL=yes
     # Make sure we don't have a control running
     if ! ssh -qO check git@github.com 1>/dev/null 2>&1; then
       # Start the control
       ssh -MN git@github.com&
       GITHUBMASTER_PID=$!
-      echo "Started GitHub ControlMaster with PID ${GITHUBMASTER_PID}"
-      trap 'printf "${GRAY}Cleaning up GitHub ControlMaster..."; ssh -qO exit git@github.com; wait $GITHUBMASTER_PID; printf "done${NC}\n"' EXIT
+      if [[ -n $_arg_verbose ]]; then
+        echo "Started GitHub ControlMaster with PID ${GITHUBMASTER_PID}"
+        trap 'printf "Cleaning up GitHub ControlMaster..."; ssh -O exit git@github.com; wait $GITHUBMASTER_PID; printf "done\n"' EXIT
+      else
+        trap 'ssh -qO exit git@github.com || kill $GITHUBMASTER_PID; wait $GITHUBMASTER_PID;' EXIT
+      fi
     fi
 fi
 
