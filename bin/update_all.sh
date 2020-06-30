@@ -9,6 +9,7 @@
 RED=$(tput setaf 1)
 BOLD=$(tput bold)
 NC=$(tput sgr0)
+GRAY=$(tput setaf 7)
 
 fail() {
   name=$1
@@ -18,6 +19,19 @@ fail() {
   echo "$message"
   not_updated="${not_updated}\n  ${message}"
 }
+
+# Check for control master configurations
+if ssh -G github.com | grep -q controlpath; then
+    # HAVE_GITHUBCONTROL=yes
+    # Make sure we don't have a control running
+    if ! ssh -qO check git@github.com 1>/dev/null 2>&1; then
+      # Start the control
+      ssh -MN git@github.com&
+      GITHUBMASTER_PID=$!
+      echo "Started GitHub ControlMaster with PID ${GITHUBMASTER_PID}"
+      trap 'printf "${GRAY}Cleaning up GitHub ControlMaster..."; ssh -qO exit git@github.com; wait $GITHUBMASTER_PID; printf "done${NC}\n"' EXIT
+    fi
+fi
 
 # Save module root so that we can come back
 MODULE_ROOT=$(pwd)
