@@ -308,6 +308,15 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         # need to remove the indentation from the next sibling.
         next_sibling.prefix = next_sibling.prefix.lstrip(" ")
 
+    if prev_node.type == token.INDENT and prev_node.prefix.isspace():
+        # We've got leading newlines we want to strip -
+        # If a function starts with a blank line(s), the "\n" and any
+        # stray indentation are attached to the [INDENT] as a prefix.
+        # Our reasoning for removing this blank line: It was showing the
+        # user that the import was special.
+        # This might be flimsy reasoning.
+        prev_node.prefix = ""
+
     # We could be transplanting a node with a prefix. Move it to the sibling
     next_sibling.prefix = node.prefix.rstrip(" ") + next_sibling.prefix
 
@@ -349,13 +358,13 @@ def checker():
 
     def _checker(input_text, expected_out):
         nodeIn = driver.parse_string(input_text)
-        # print_tree(nodeIn)
+        print_node(nodeIn)
         import_node = get_children(nodeIn, python_symbols.import_name, recursive=True)[
             0
         ]
         process_import(import_node, {}, "__TEST__")
         # print_tree(nodeIn)
-        # print_node(nodeIn)
+        print_node(nodeIn)
         assert expected_out == str(nodeIn), "Tranformed code does not match expected"
 
     return _checker
@@ -444,6 +453,21 @@ def x():
 
 def x():
     # Some comment
+    pass
+"""
+    checker(origin, out)
+
+
+def test_leading_blank_line_in_function(checker):
+    origin = """
+def x():
+
+    import os
+    pass
+"""
+    out = """import os
+
+def x():
     pass
 """
     checker(origin, out)
