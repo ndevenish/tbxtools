@@ -3,6 +3,7 @@
 Float imports from enclosed scopes to global.
 
 Requires python3 with the packages bowler, pytest available.
+If isort (5) is installed, can use for classification.
 
 Doesn't float imports that:
     - Have a comment directly preceeding it
@@ -12,6 +13,9 @@ Doesn't float imports that:
 """
 
 import argparse
+import sys
+from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional
 
 import fissix.pgen2
@@ -25,9 +29,15 @@ from fissix.pgen2 import token
 from fissix.pygram import python_symbols
 from fissix.pytree import Leaf, Node, type_repr
 
+try:
+    import isort
+except ImportError:
+    isort = None
+
 PATTERN = """import_name | import_from"""
 
 IGNORE_IF = False
+ONLY_FLOAT = set()
 
 # Build a driver to help generate nodes from known code
 # Used in testing
@@ -214,6 +224,12 @@ def get_complete_prefix(node: LN) -> str:
     return prefix
 
 
+@lru_cache(maxsize=1)
+def get_isort_config_for(filename: Filename) -> isort.settings.Config:
+    """Fetch a new or cached isort configuration for a file's path"""
+    return isort.settings.Config(settings_path=str(Path(filename).parent))
+
+
 def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[LN]:
     # Skip any imports at file scope
     if node.parent.parent.type == python_symbols.file_input:
@@ -224,6 +240,7 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         "math",
         "optparse",
         "os",
+        "os.path",
         "six.moves.cPickle as pickle",
         "six.moves",
         "sys",
@@ -233,12 +250,25 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
     module_name = str(node.children[1]).strip()
 
     always_float = module_name in IMPORT_WHITELIST
+    # if STDLIB_ONLY:
+    #     if :
+    #         return
+    # See if this is rejected
+    if ONLY_FLOAT:
+        isort_class = None
+        if any(x.isupper() for x in ONLY_FLOAT):
+            isort_class = isort.place_module(
+                module_name, config=get_isort_config_for(filename)
+            )
+        # print(f"{module_name} == {isort_class}")
+        if module_name not in ONLY_FLOAT and isort_class not in ONLY_FLOAT:
+            return
 
     if not always_float:
         # Bypass nodes with comments for now
         if node.get_suffix().strip() or get_complete_prefix(node).strip():
             print(
-                f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as has comments"
+                f"Not floating {filename}:{node.get_lineno()} ({module_name}) as has comments"
             )
             return
 
@@ -255,7 +285,9 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
                 # Check that we aren't the only entry in this suite
                 assert node.parent.parent.type == python_symbols.suite
                 if len(node.parent.parent.children) == 4:
-                    print(f"Not floating always-float {filename}:{node.get_lineno()} ({module_name}) as only statement inside try")
+                    print(
+                        f"Not floating always-float {filename}:{node.get_lineno()} ({module_name}) as only statement inside try"
+                    )
                     return
             else:
                 print(
@@ -278,6 +310,7 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
                     f"Not floating {filename}:{node.get_lineno()} ({module_name}) as inside if"
                 )
                 return
+
         root = root.parent
 
     # Find the insertion point for this root node
@@ -351,11 +384,34 @@ def main():
         "--ignoreif", action="store_true", help="Float from inside if statements"
     )
     parser.add_argument(
+        "--stdlib",
+        action="store_true",
+        help="Only float standard library imports. Same as --only=STDLIB",
+    )
+    parser.add_argument(
+        "--only",
+        action="store",
+        help="Comma-separated list of modules to float. All others will be ignored. Can pass in all caps e.g. STDLIB and the isort classification will be used.",
+    )
+    parser.add_argument(
         "filenames", metavar="FILE", nargs="*", help="Specific filenames to process"
     )
     args = parser.parse_args()
-    global IGNORE_IF
+    global IGNORE_IF, ONLY_FLOAT
     IGNORE_IF = args.ignoreif
+    # Don't allow stdlib floating if isort is not available
+    if args.stdlib and isort is None:
+        sys.exit("Can not classify standard library modules; isort not installed")
+
+    # Handle specific subsets of floating
+    if args.only:
+        only_list_prep = [x.strip() for x in args.only.split(",")]
+        if any(x.isupper() for x in only_list_prep) and isort is None:
+            sys.exit("Can not use isort classification as isort is not available")
+        ONLY_FLOAT = set(only_list_prep)
+    if args.stdlib:
+        ONLY_FLOAT.add("STDLIB")
+
     (
         Query(args.filenames)
         .select(PATTERN)
@@ -485,6 +541,7 @@ def x():
 """
     checker(origin, out)
 
+
 def test_bad_always_float(checker):
     origin = """
 try:
@@ -494,6 +551,7 @@ except:
 """
     out = origin
     checker(origin, out)
+
 
 if __name__ == "__main__":
     main()
