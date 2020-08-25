@@ -230,8 +230,10 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
         "urllib2",
         "uuid",
     }
+    module_name = str(node.children[1]).strip()
 
-    always_float = str(node.children[1]).strip() in IMPORT_WHITELIST
+    always_float = module_name in IMPORT_WHITELIST
+
     if not always_float:
         # Bypass nodes with comments for now
         if node.get_suffix().strip() or get_complete_prefix(node).strip():
@@ -247,22 +249,33 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
     # Find the root node. While doing so, check that we aren't inside a try
     root = node
     while root.parent:
-        if not always_float:
-            if root.type == python_symbols.try_stmt:
-                print(f"Not floating {filename}:{node.get_lineno()} as inside try")
+        # Handle always-float and try blocks - don't leave invalid
+        if root.type == python_symbols.try_stmt:
+            if always_float:
+                # Check that we aren't the only entry in this suite
+                assert node.parent.parent.type == python_symbols.suite
+                if len(node.parent.parent.children) == 4:
+                    print(f"Not floating always-float {filename}:{node.get_lineno()} ({module_name}) as only statement inside try")
+                    return
+            else:
+                print(
+                    f"Not floating {filename}:{node.get_lineno()} ({module_name}) as inside try"
+                )
                 return
+        if not always_float:
+            # Give a special message to the user for __main__ if non-floating
             if (
                 root.type == python_symbols.if_stmt
                 and not IGNORE_IF
                 and "__main__" in str(root.children[1])
             ):
                 print(
-                    f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside __main__ test if"
+                    f"Not floating {filename}:{node.get_lineno()} ({module_name}) as inside __main__ test if"
                 )
                 return
             if root.type == python_symbols.if_stmt and not IGNORE_IF:
                 print(
-                    f"Not floating {filename}:{node.get_lineno()} ({node.children[1]}) as inside if"
+                    f"Not floating {filename}:{node.get_lineno()} ({module_name}) as inside if"
                 )
                 return
         root = root.parent
@@ -472,6 +485,15 @@ def x():
 """
     checker(origin, out)
 
+def test_bad_always_float(checker):
+    origin = """
+try:
+    import math
+except:
+    pass
+"""
+    out = origin
+    checker(origin, out)
 
 if __name__ == "__main__":
     main()
