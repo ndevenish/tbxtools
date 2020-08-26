@@ -260,21 +260,24 @@ def process_import(node: LN, capture: Capture, filename: Filename) -> Optional[L
             isort_class = isort.place_module(
                 module_name, config=get_isort_config_for(filename)
             )
-        # print(f"{module_name} == {isort_class}")
-        if module_name not in ONLY_FLOAT and isort_class not in ONLY_FLOAT:
+        if (
+            module_name not in ONLY_FLOAT
+            and not any(module_name.startswith(x + ".") for x in ONLY_FLOAT)
+            and isort_class not in ONLY_FLOAT
+        ):
             return
 
-    if not always_float:
-        # Bypass nodes with comments for now
-        if node.get_suffix().strip() or get_complete_prefix(node).strip():
-            print(
-                f"Not floating {filename}:{node.get_lineno()} ({module_name}) as has comments"
-            )
-            return
+    # if not always_float:
+    # Bypass nodes with comments for now
+    if node.get_suffix().strip() or get_complete_prefix(node).strip():
+        print(
+            f"Not floating {filename}:{node.get_lineno()} ({module_name}) as has comments"
+        )
+        return
 
-        if "matplotlib" in str(node):
-            print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
-            return
+    if "matplotlib" in str(node):
+        print(f"Not floating {filename}:{node.get_lineno()} as matplotlib")
+        return
 
     # Find the root node. While doing so, check that we aren't inside a try
     root = node
