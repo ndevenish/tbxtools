@@ -136,6 +136,9 @@ class libtbxEnv(object):
             "Called to write dispatcher {} to {}".format(target_file, source_file)
         )
 
+    def module_is_installed(self, module: str) -> bool:
+        return None
+
 
 class libtbxIncludeRegistry(list):
     def scan_boost(self, *args, **kwargs):
@@ -160,9 +163,9 @@ class libtbxIncludeRegistry(list):
 def new_module(name, doc=None):
     """Create a new module and inject it into sys.modules.
 
-  :param name: Fully qualified name (including parent .)
-  :returns:  A module, injected into sys.modules
-  """
+    :param name: Fully qualified name (including parent .)
+    :returns:  A module, injected into sys.modules
+    """
     m = ModuleType(name, doc)
     m.__file__ = name + ".py"
     sys.modules[name] = m
@@ -273,6 +276,7 @@ def do_import_patching(dist_path):
     libtbx.env_config.darwin_shlinkcom = _tbx_darwin_shlinkcom
     libtbx.env_config.get_gcc_version = _get_gcc_version_50400
     libtbx.env_config.get_boost_library_with_python_version = lambda m, _: m
+    libtbx.env_config.get_local_env = lambda: None
     # def get_gcc_version(command_name="gcc"):
 
     libtbx.utils.select_matching = _libtbx_select_matching

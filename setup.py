@@ -25,6 +25,7 @@ setup(
         "pyyaml",
         "mock;python_version<'3.3'",
         "six",
+        "docopt",
     ],
     package_data={"tbxtools.tbx2cmake": ["build_info.yaml"]},
 )
