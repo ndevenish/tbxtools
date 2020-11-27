@@ -25,7 +25,9 @@ jobs:
               git add $target_file
             done
             git commit -m "Rename XXX.* newsfragments to PR number"
-            git remote -v
-            git branch -a
-            git push origin
+
+            HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+            git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
+            git push fork HEAD:"${HEAD_BRANCH}"
           fi
