@@ -29,5 +29,11 @@ jobs:
             HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
             HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
+            git fetch fork
+            echo "Fork log"
+            git log fork/${HEAD_BRANCH}
+            echo "Local log"
+            git log HEAD
+            echo "Push"
             git push fork HEAD:"${HEAD_BRANCH}"
           fi
