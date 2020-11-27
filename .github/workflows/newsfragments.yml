@@ -19,6 +19,15 @@ jobs:
           if [[ -n "$(ls newsfragments/XXX.*)" ]]; then
             git config user.name "${GITHUB_ACTOR}"
             git config user.email "noreply@dials.github.io"
+            HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+            git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
+            git fetch fork
+            echo "Local log"
+            git log --oneline --graph --decorate fork/${HEAD_BRANCH}..47a38a1 HEAD..47a38a1
+            # Rewind this to the head of the PR instead of the post-PR merge point
+            git checkout -b _rename_news fork/${HEAD_BRANCH}
+
             for fragment in newsfragments/XXX.*; do
               target_file="$(echo "${fragment}" | sed "s/XXX/${{github.event.number}}/")"
               git mv $fragment $target_file
@@ -26,12 +35,6 @@ jobs:
             done
             git commit -m "Rename XXX.* newsfragments to PR number"
 
-            HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
-            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
-            git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
-            git fetch fork
-            echo "Local log"
-            git log --oneline --graph --decorate fork/${HEAD_BRANCH} HEAD
             echo "Event path"
             cat "$GITHUB_EVENT_PATH"
             echo "Push"
