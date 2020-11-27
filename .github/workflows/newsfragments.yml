@@ -31,7 +31,9 @@ jobs:
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
             git fetch fork
             echo "Local log"
-            git log --oneline --graph fork/${HEAD_BRANCH} HEAD
+            git log --oneline --graph --decorate fork/${HEAD_BRANCH} HEAD
+            echo "Event path"
+            cat "$GITHUB_EVENT_PATH"
             echo "Push"
             git push fork HEAD:"${HEAD_BRANCH}"
           fi
