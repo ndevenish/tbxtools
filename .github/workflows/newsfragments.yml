@@ -25,5 +25,5 @@ jobs:
               git add $target_file
             done
             git commit -m "Rename XXX.* newsfragments to PR number"
-            git push origin "${{ github.event.pull_request.head.ref }}"
+            git push origin
           fi
