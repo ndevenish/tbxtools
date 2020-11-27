@@ -16,6 +16,7 @@ jobs:
       - name: Added a newsfragment
         run: |
           set -x
+          git log --oneline --decorate
           git diff ${{ github.event.pull_request.base.sha }} --name-only -- newsfragments/
           if [[ -z "git diff ${{ github.event.pull_request.base.sha }} --name-only -- newsfragments/" ]]; then
             echo "::error ::PR Branch is missing a newsfragment. Please add one with a number or named XXX.<type>."
