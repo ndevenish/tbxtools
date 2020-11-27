@@ -13,7 +13,15 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
-      - name: Check newsfragment
+      - name: Added a newsfragment
+        run: |
+          if [[ -z "git diff --stat ${{ github.event.pull_request.base.sha }} --name-only newsfragments/" ]]; then
+            echo "::error ::PR Branch is missing a newsfragment. Please add one with a number or named XXX.<type>."
+            exit 1
+          else
+            echo "✅  Newsfragment entry present"
+          fi
+      - name: Rename placeholder newsfragments
         run: |
           # set -x
           if ls newsfragments/XXX.* 1> /dev/null 2>&1; then
@@ -23,8 +31,6 @@ jobs:
             HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
             git fetch fork
-            echo "Local log"
-            git log --oneline --graph --decorate fork/${HEAD_BRANCH}..47a38a1 HEAD..47a38a1
             # Rewind this to the head of the PR instead of the post-PR merge point
             git checkout -b _rename_news fork/${HEAD_BRANCH}
 
@@ -34,12 +40,7 @@ jobs:
               git add $target_file
             done
             git commit -m "Rename XXX.* newsfragments to PR number"
-
-            echo "Event path"
-            cat "$GITHUB_EVENT_PATH"
-            echo "Push"
             git push fork HEAD:"${HEAD_BRANCH}"
           else
-            echo "No changes."
-            find .
+            echo "No Newsfragments need to be renamed."
           fi
