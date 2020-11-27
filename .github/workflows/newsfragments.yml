@@ -1,0 +1,52 @@
+name: Newsfragments
+
+on:
+  pull_request:
+    branches-ignore:
+      - 'dials-?.*'
+#    paths:
+#      - 'newsfragments/XXX.*'
+
+
+jobs:
+  rename-news:
+    name: Newsfragment Checks
+    runs-on: ubuntu-latest
+
+  steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+    - name: Check newsfragment
+      run: |
+        if [[ -n "$(ls newsfragments/XXX.*)" ]]; then
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "noreply@dials.github.io"
+          for fragment in newsfragments/XXX.*; do
+            target_file="$(echo "${fragment}" | sed "s/XXX/${{github.event.number}}/")"
+            git mv $fragment $target_file
+            git add $target_file
+          done
+          git commit -m "Rename XXX.* newsfragments to PR number"
+          git push origin ${GITHUB_REF}
+        fi
+
+  # # Set the job key. The key is displayed as the job name
+  # # when a job name is not provided
+  # super-lint:
+  #   # Name the Job
+  #   name: Lint code base
+  #   # Set the type of machine to run on
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     # Checks out a copy of your repository on the ubuntu-latest machine
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+
+  #     # Runs the Super-Linter action
+  #     - name: Run Super-Linter
+  #       uses: github/super-linter@v3
+  #       env:
+  #         DEFAULT_BRANCH: main
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
