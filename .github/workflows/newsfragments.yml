@@ -16,7 +16,7 @@ jobs:
       - name: Check newsfragment
         run: |
           # set -x
-          if [[ -n "$(ls newsfragments/XXX.*)" ]]; then
+          if ls newsfragments/XXX.* 1> /dev/null 2>&1; then
             git config user.name "GitHub"
             git config user.email "noreply@github.com"
             HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
@@ -39,4 +39,7 @@ jobs:
             cat "$GITHUB_EVENT_PATH"
             echo "Push"
             git push fork HEAD:"${HEAD_BRANCH}"
+          else
+            echo "No changes."
+            find .
           fi
