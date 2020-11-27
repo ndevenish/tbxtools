@@ -13,9 +13,12 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Added a newsfragment
         run: |
           set -x
+          git fetch --unshallow
           git log --oneline --decorate
           git diff ${{ github.event.pull_request.base.sha }} --name-only -- newsfragments/
           if [[ -z "git diff ${{ github.event.pull_request.base.sha }} --name-only -- newsfragments/" ]]; then
@@ -33,9 +36,9 @@ jobs:
             HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
             HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
-            git fetch fork
-            # Rewind this to the head of the PR instead of the post-PR merge point
-            git checkout -b _rename_news fork/${HEAD_BRANCH}
+            # git fetch fork
+            # # Rewind this to the head of the PR instead of the post-PR merge point
+            # git checkout -b _rename_news fork/${HEAD_BRANCH}
 
             for fragment in newsfragments/XXX.*; do
               target_file="$(echo "${fragment}" | sed "s/XXX/${{github.event.number}}/")"
