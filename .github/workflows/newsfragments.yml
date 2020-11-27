@@ -17,8 +17,8 @@ jobs:
         run: |
           # set -x
           if [[ -n "$(ls newsfragments/XXX.*)" ]]; then
-            git config user.name "${GITHUB_ACTOR}"
-            git config user.email "noreply@dials.github.io"
+            git config user.name "GitHub"
+            git config user.email "noreply@github.com"
             HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
             HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
