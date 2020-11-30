@@ -36,13 +36,19 @@ jobs:
             git config user.email "noreply@github.com"
             HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
             HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+            message=""
             git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
             for fragment in newsfragments/XXX.*; do
               target_file="$(echo "${fragment}" | sed "s/XXX/${{github.event.number}}/")"
               git mv $fragment $target_file
               git add $target_file
+              if [[ -z "${message}" ]]; then
+                message="Rename ${fragment} to ${target_file}"
+              else
+                message="Rename XXX.* to ${{github.event.number}}.*"
+              fi
             done
-            git commit -m "Rename XXX.* newsfragments to PR ${{github.event.number}}"
+            git commit -m "${message}"
             git push fork HEAD:"${HEAD_BRANCH}"
           else
             echo "No Newsfragments need to be renamed."
