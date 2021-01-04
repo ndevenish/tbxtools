@@ -1,12 +1,11 @@
 """Monkeypatching scitbx/cctbx for diagnostics output"""
 
 import enum
-from math import log10, floor
 import re
-from StringIO import StringIO
+from io import StringIO
+from math import floor, log10
 
 from libtbx import phil
-import numpy
 
 
 class Flags(enum.IntEnum):
@@ -192,18 +191,11 @@ def _reftable_repr(self):
 # re_remove_dtype
 def _patch_flex(flex, dtype, shape=None, ndim=1):
     def _do_repr(x):
-        if x.size() == 0:
-            return type(x).__name__ + "([])"
-        return re_remove_dtype.sub("", numpy.array_repr(x))
+        return re_remove_dtype.sub(
+            "", repr(x.as_numpy_array()).replace("array(", f"{type(x).__name__}(")
+        )
 
     flex.__repr__ = _do_repr
-    if shape is None:
-        flex.shape = property(lambda x: (len(x),))
-    else:
-        flex.shape = property(shape)
-    flex.ndim = ndim
-    flex.dtype = numpy.dtype(dtype)
-    # dtype('int64')
 
 
 def _cctbx_crystal_symmetry_repr(self):
@@ -233,14 +225,14 @@ def _cctbx_miller_set_repr(self):
 
 
 def do_monkeypatching():
-    import scitbx.array_family.flex
     import cctbx.array_family.flex
-    import cctbx.uctbx
-    import dxtbx.model
     import cctbx.crystal
-    import cctbx.sgtbx
     import cctbx.miller
+    import cctbx.sgtbx
+    import cctbx.uctbx
     import dials.array_family.flex
+    import dxtbx.model
+    import scitbx.array_family.flex
 
     _patch_flex(scitbx.array_family.flex.size_t, int)
     _patch_flex(scitbx.array_family.flex.double, float)
