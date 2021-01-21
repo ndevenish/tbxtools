@@ -186,6 +186,8 @@ def find_prev_leaf(node: LN) -> LN:
 
 RE_MAPPINGKEY = re.compile(r"[^%]%\(")
 RE_SPECIFIERS = re.compile(r"(?<!%)%[^%]")
+RE_FORMAT_SPECIFIER = re.compile(r"(?<!{)({[^{}]*})")
+RE_UNDERSTOOD_FORMAT = re.compile(r"(?<!{)({:\d*.\d+f}|{:>\d+}|{})")
 
 
 def process_percent_format(
@@ -236,6 +238,62 @@ def process_percent_format(
     return None
 
 
+# RE_FORMAT_SPECIFIER = re.compile(r"(?<!{)({[^{}]*})")
+# RE_UNDERSTOOD_FORMAT = re.compile(r"(?<!{)({:\d*.\d+f}|{:>\d+}|{})")
+
+
+def process_format_format(
+    node: LN, capture: Capture, filename: Filename  # noqa: U100
+) -> Optional[LN]:
+
+    formatstring = capture["formatstr"]
+    if formatstring.type != token.STRING:
+        print("Not formatting {filename}:{node.get_lineno()} because indirect format")
+        return None
+    num_specifiers = len(RE_FORMAT_SPECIFIER.findall(formatstring.value))
+    understood = RE_UNDERSTOOD_FORMAT.findall(formatstring.value)
+
+    if len(understood) != num_specifiers:
+        print(
+            f"Not formatting {filename}:{node.get_lineno()} because complex format specifiers:\n    {formatstring.value.strip()}"
+        )
+        return None
+
+    # Basic {}
+    formatstring.value = re.sub(r"{}", "%s", formatstring.value)
+    # {:.3f} and friends
+    formatstring.value = re.sub(r"(?<!{){:(\d*\.\d+f)}", r"%\1", formatstring.value)
+    # {:>12}
+    formatstring.value = re.sub(r"{>(\d+)}", r"%\1s", formatstring.value)
+    # if RE_NONPLAIN_FORMAT.search(formatstring.value):
+    #     return None
+
+    # print_node(node, capture=capture)
+    # breakpoint()
+    if isinstance(capture["arglist"], Leaf):
+        arguments = [capture["arglist"]]
+    else:
+        arguments = list(capture["arglist"].children)
+
+    # Clear the parents of moved nodes
+    for child in arguments:
+        child.remove()
+    formatstring.remove()
+
+    # Rewrite the format-string specifier
+    formatstring.value = formatstring.value.replace("{}", "%s")
+    # breakpoint()
+    # Build the arglist
+    capture["formatblock"].replace(
+        Node(python_symbols.arglist, [formatstring, Comma()] + arguments)
+    )
+
+    # RE_NONPLAIN_FORMAT
+    # print_node(node, capture=capture)
+    # breakpoint()
+    return None
+
+
 def main(argv=None):
     """Runs the query. Called by bowler if run as a script"""
 
@@ -264,10 +322,24 @@ def main(argv=None):
             '(' term < formatstr=any '%' vars=any > ')'
         >
     >"""
+    FORMAT_PATTERN = f"""
+    power <
+        '{args.logger}'
+        trailer
+        call=trailer <
+            '(' formatblock=any <
+                formatstr=STRING trailer < "." "format" >
+                any < '(' arglist=any ')'>
+            > ')'
+        >
+    >
+    """
     (
         Query(args.filenames)
         .select(PERCENT_PATTERN)
         .modify(process_percent_format)
+        .select(FORMAT_PATTERN)
+        .modify(process_format_format)
         .execute(interactive=False, write=args.do, silent=args.silent)
     )
 
@@ -300,6 +372,7 @@ test_cases = [
     ('logger.info("def" % (something, 3))', 'logger.info("def", something, 3)'),
     ('logger.info("%s %s" % sometuple)', None),
     ('logger.info("%(some)" % {"some": 4})', None),
+    ('logger.info("{}".format(3))', 'logger.info("%s", 3)'),
 ]
 
 
