@@ -174,7 +174,7 @@ def find_prev_leaf(node: LN) -> LN:
 
 
 def process_percent_format(
-    node: LN, capture: Capture, filename: Filename
+    node: LN, capture: Capture, filename: Filename  # noqa: U100
 ) -> Optional[LN]:
 
     # root = node
@@ -209,7 +209,7 @@ def process_percent_format(
     )
 
 
-def main():
+def main(argv=None):
     """Runs the query. Called by bowler if run as a script"""
 
     parser = argparse.ArgumentParser(description=__doc__)
@@ -227,7 +227,7 @@ def main():
         default="logger",
         help="The conventional name for loggers",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     PERCENT_PATTERN = f"""
     power <
@@ -237,7 +237,7 @@ def main():
             '(' term < formatstr=any '%' vars=any > ')'
         >
     >"""
-
+    print(args)
     (
         Query(args.filenames)
         .select(PERCENT_PATTERN)
@@ -247,25 +247,38 @@ def main():
 
 
 @pytest.fixture
-def checker():
+def checker(tmp_path):
     """Pytest fixture to make testing input/expected output strings easy."""
 
     def _checker(input_text, expected_out):
-        nodeIn = driver.parse_string(input_text)
-        print_node(nodeIn)
-        import_node = get_children(nodeIn, python_symbols.import_name, recursive=True)[
-            0
-        ]
-        process_percent_format(import_node, {}, "__TEST__")
-        # print_tree(nodeIn)
-        print_node(nodeIn)
-        assert expected_out == str(nodeIn), "Tranformed code does not match expected"
+        filename = tmp_path / "test.py"
+        filename.write_text(input_text + "\n")
+        main(["--do", str(filename)])
+
+        # We don't care about formatting, only structure, so strip them
+        def _compact(string):
+            return "".join(x for x in string if x not in {" ", "\n"})
+
+        actual_out = _compact(filename.read_text())
+        assert (
+            _compact(expected_out) == actual_out
+        ), "Tranformed code does not match expected"
 
     return _checker
 
 
-def test_basic_move(checker):
-    pass
+test_cases = [
+    ('logger.info("abc" % something)', 'logger.info("abc", something)'),
+    ('logger.info("def" % (something, 3))', 'logger.info("def", something, 3)'),
+]
+
+
+@pytest.mark.parametrize("inline,outline", test_cases)
+def test_basics(checker, inline, outline):
+    checker(inline, outline)
+
+
+# logger.info("def" % (something, 3)))
 
 
 #     origin = """
