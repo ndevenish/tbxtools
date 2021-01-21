@@ -260,6 +260,8 @@ def checker(tmp_path):
             return "".join(x for x in string if x not in {" ", "\n"})
 
         actual_out = _compact(filename.read_text())
+        if expected_out is None:
+            expected_out = input_text
         assert (
             _compact(expected_out) == actual_out
         ), "Tranformed code does not match expected"
@@ -270,6 +272,7 @@ def checker(tmp_path):
 test_cases = [
     ('logger.info("abc" % something)', 'logger.info("abc", something)'),
     ('logger.info("def" % (something, 3))', 'logger.info("def", something, 3)'),
+    ('logger.info("%s %s" % sometuple)', None),
 ]
 
 
