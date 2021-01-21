@@ -264,7 +264,7 @@ def process_format_format(
     # {:.3f} and friends
     formatstring.value = re.sub(r"(?<!{){:(\d*\.\d+f)}", r"%\1", formatstring.value)
     # {:>12}
-    formatstring.value = re.sub(r"{>(\d+)}", r"%\1s", formatstring.value)
+    formatstring.value = re.sub(r"(?<!{){:>(\d+)}", r"%\1s", formatstring.value)
     # if RE_NONPLAIN_FORMAT.search(formatstring.value):
     #     return None
 
@@ -373,6 +373,8 @@ test_cases = [
     ('logger.info("%s %s" % sometuple)', None),
     ('logger.info("%(some)" % {"some": 4})', None),
     ('logger.info("{}".format(3))', 'logger.info("%s", 3)'),
+    ('logger.info("{:.12f}".format(3))', 'logger.info("%.12f", 3)'),
+    ('logger.info("{:>3}".format(3))', 'logger.info("%3s", 3)'),
 ]
 
 
