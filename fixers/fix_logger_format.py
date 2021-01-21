@@ -43,7 +43,9 @@ driver = fissix.pgen2.driver.Driver(
 )
 
 
-def print_node(node: LN, max_depth: int = 1000, indent: str = "", last: bool = True):
+def print_node(
+    node: LN, max_depth: int = 1000, indent: str = "", last: bool = True, capture={}
+):
     """Debugging function to print node tree.
     Arguments:
         node: The node to print
@@ -56,9 +58,15 @@ def print_node(node: LN, max_depth: int = 1000, indent: str = "", last: bool = T
         first_i = "├─"
         second_i = "│ "
     prefix = indent + first_i
+    name = ""
+    if node in capture.values():
+        name = (
+            "\033[32m" + next(k for k, v in capture.items() if v == node) + "\033[0m= "
+        )
     if type(node) is Node:
         print(
             prefix
+            + name
             + "Node[{}] prefix={} suffix={}".format(
                 type_repr(node.type), repr(node.prefix), repr(node.get_suffix())
             )
@@ -67,6 +75,7 @@ def print_node(node: LN, max_depth: int = 1000, indent: str = "", last: bool = T
         print(
             indent
             + first_i
+            + name
             + "Leaf({}, {}, col={}{})".format(
                 token.tok_name[node.type],
                 repr(node.value),
@@ -88,6 +97,7 @@ def print_node(node: LN, max_depth: int = 1000, indent: str = "", last: bool = T
                 indent=indent,
                 last=(i + 1) == len(children),
                 max_depth=max_depth - 1,
+                capture=capture,
             )
 
 
