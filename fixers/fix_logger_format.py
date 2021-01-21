@@ -22,6 +22,7 @@ Doesn't float imports that:
 """
 
 import argparse
+import re
 from typing import List, Optional
 
 import fissix.pgen2
@@ -173,32 +174,47 @@ def find_prev_leaf(node: LN) -> LN:
     return node
 
 
+RE_MAPPINGKEY = re.compile(r"[^%]%\(")
+RE_SPECIFIERS = re.compile(r"(?<!%)%[^%]")
+
+
 def process_percent_format(
     node: LN, capture: Capture, filename: Filename  # noqa: U100
 ) -> Optional[LN]:
 
-    # root = node
-    # while root.parent:
-    #     root = root.parent
-
-    # pprint.pprint(capture)
-    # print_node(node)
+    # if capture["formatstr"] has more than one format point, don't
+    # expand it for now
+    # if capture["formatstr"]:
+    print_node(capture["formatstr"])
+    specifiers = None
+    if capture["formatstr"].type == token.STRING:
+        if RE_MAPPINGKEY.search(capture["formatstr"].value):
+            print(
+                f"Not formatting {filename}:{node.get_lineno()} as appears to have mapping key"
+            )
+            return None
+        specifiers = RE_SPECIFIERS.findall(capture["formatstr"].value)
 
     # breakpoint()
     try:
+        # Access precise chain of lookups for the inline-tuple case
         if capture["vars"].children[0].value == "(":
             format_args = capture["vars"].children[1].children
         else:
-            format_args = [capture["vars"]]
-        # # breakpoint()
-        # else:
-        #     print_node(node)
-        #     raise RuntimeError("Unknown child!")
+            # It's not this specific case, treat it as one item
+            raise IndexError
     except IndexError:
-        # pass
+        # Not a tuple, if we have more than one specifier then we can't
+        # reliably rewrite this.
+        if specifiers and len(specifiers) > 1:
+            print(
+                f"Not formatting {filename}:{node.get_lineno()} because unsafe rewriting with indirect tuple"
+            )
+            return None
         # We aren't something with a sub-tuple, assume single-argument
         format_args = [capture["vars"]]
 
+    # Don't rewrite if
     # Prepare these node for transplant
     for child in format_args:
         child.parent = None
@@ -207,6 +223,7 @@ def process_percent_format(
     capture["call"].children[1] = Node(
         python_symbols.arglist, [capture["formatstr"], Comma()] + format_args
     )
+    return None
 
 
 def main(argv=None):
@@ -273,6 +290,7 @@ test_cases = [
     ('logger.info("abc" % something)', 'logger.info("abc", something)'),
     ('logger.info("def" % (something, 3))', 'logger.info("def", something, 3)'),
     ('logger.info("%s %s" % sometuple)', None),
+    ('logger.info("%(some)" % {"some": 4})', None),
 ]
 
 
