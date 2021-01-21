@@ -185,7 +185,7 @@ def process_percent_format(
     # if capture["formatstr"] has more than one format point, don't
     # expand it for now
     # if capture["formatstr"]:
-    print_node(capture["formatstr"])
+    # print_node(capture["formatstr"])
     specifiers = None
     if capture["formatstr"].type == token.STRING:
         if RE_MAPPINGKEY.search(capture["formatstr"].value):
@@ -208,7 +208,7 @@ def process_percent_format(
         # reliably rewrite this.
         if specifiers and len(specifiers) > 1:
             print(
-                f"Not formatting {filename}:{node.get_lineno()} because unsafe rewriting with indirect tuple"
+                f"Not formatting {filename}:{node.get_lineno()} because unsafe rewriting indirect tuple"
             )
             return None
         # We aren't something with a sub-tuple, assume single-argument
@@ -254,7 +254,6 @@ def main(argv=None):
             '(' term < formatstr=any '%' vars=any > ')'
         >
     >"""
-    print(args)
     (
         Query(args.filenames)
         .select(PERCENT_PATTERN)
