@@ -7,6 +7,9 @@ e.g. logger.info("a value: %s" % value)
 
      logger.info(" values: %s %d" % (value, 3))
   -> logger.info(" values: %s %d", value, 3)
+  
+     logger.info("{} {:.3f} {:>10}".format(a, b, c))
+  -> logger.info("%s %.3f %10s", a, b, c)
 
 Written so that flynt can be run over a codebase without turning
 all of these into f-strings, at which point it's even more work
