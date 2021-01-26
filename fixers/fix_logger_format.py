@@ -16,12 +16,6 @@ all of these into f-strings, at which point it's even more work
 to turn them back to logger-style deferred formatting.
 
 Requires python3 with the packages bowler, pytest available.
-
-Doesn't float imports that:
-    - Have a comment directly preceeding it
-    - Are inside a try block
-    - Are inside an if block
-    - Are importing matplotlib (deal with this case later)
 """
 
 import argparse
