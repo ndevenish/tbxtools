@@ -7,7 +7,7 @@ e.g. logger.info("a value: %s" % value)
 
      logger.info(" values: %s %d" % (value, 3))
   -> logger.info(" values: %s %d", value, 3)
-  
+
      logger.info("{} {:.3f} {:>10}".format(a, b, c))
   -> logger.info("%s %.3f %10s", a, b, c)
 
@@ -194,7 +194,7 @@ def process_percent_format(
     # if capture["formatstr"] has more than one format point, don't
     # expand it for now
     # if capture["formatstr"]:
-    # print_node(capture["formatstr"])
+    # print_node(node, capture=capture)
     specifiers = None
     if capture["formatstr"].type == token.STRING:
         if RE_MAPPINGKEY.search(capture["formatstr"].value):
@@ -204,11 +204,16 @@ def process_percent_format(
             return None
         specifiers = RE_SPECIFIERS.findall(capture["formatstr"].value)
 
-    # breakpoint()
     try:
         # Access precise chain of lookups for the inline-tuple case
         if capture["vars"].children[0].value == "(":
-            format_args = capture["vars"].children[1].children
+            inner = capture["vars"].children[1]
+            if isinstance(inner, Node):
+                format_args = inner.children
+            elif isinstance(inner, Leaf):
+                format_args = [inner]
+            else:
+                raise RuntimeError("Unknown type")
         else:
             # It's not this specific case, treat it as one item
             raise IndexError
@@ -372,6 +377,10 @@ test_cases = [
     ('logger.info("{}".format(3))', 'logger.info("%s", 3)'),
     ('logger.info("{:.12f}".format(3))', 'logger.info("%.12f", 3)'),
     ('logger.info("{:>3}".format(3))', 'logger.info("%3s", 3)'),
+    (
+        r'logger.info(" Using multiprocessing with %d parallel job(s)\n" % (mp_nproc))',
+        r'logger.info(" Using multiprocessing with %d parallel job(s)\n", mp_nproc)',
+    ),
 ]
 
 
