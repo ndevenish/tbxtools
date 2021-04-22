@@ -19,6 +19,14 @@ print_help() {
     printf '\t%s\n' "-v, --verbose: More detailed debugging output"
     printf '\t%s\n' "-h, --help: Prints this message"
 }
+git-get-main-branch() {
+    dir="${1:-.}"
+    if git -C "$dir" show-ref -q --verify refs/remotes/origin/main; then
+        printf "main"
+    else
+        printf "master"
+    fi
+}
 
 while test $# -gt 0; do
     _key="$1"
@@ -101,9 +109,10 @@ for dir in $subdirs; do
             update_command='git pull --ff-only origin'
         fi
         # Conditions for trying are the same for normal/svn
-        if [[ $(git rev-parse --abbrev-ref HEAD) != "master" ]]; then
+        main="$(git-get-main-branch .)"
+        if [[ $(git rev-parse --abbrev-ref HEAD) != "$main" ]]; then
             git fetch || true
-            fail "$name" "Not on master branch. Not attempting update."
+            fail "$name" "Not on $main branch. Not attempting update."
         elif ! git diff-index --quiet HEAD --; then
             git fetch || true
             fail "$name" "Changes to working directory; cannot update."
