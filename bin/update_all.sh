@@ -113,7 +113,7 @@ for dir in $subdirs; do
         if [[ $(git rev-parse --abbrev-ref HEAD) != "$main" ]]; then
             git fetch || true
             fail "$name" "Not on $main branch. Not attempting update."
-        elif ! git diff-index --quiet HEAD --; then
+        elif ! git diff --no-ext-diff --quiet; then
             git fetch || true
             fail "$name" "Changes to working directory; cannot update."
         else
