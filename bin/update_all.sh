@@ -7,6 +7,7 @@
 #   ./update_all.sh
 
 RED=$(tput setaf 1)
+YELLOW=$(tput setaf 3)
 BOLD=$(tput bold)
 NC=$(tput sgr0)
 
@@ -65,6 +66,14 @@ fail() {
     echo "$message"
     not_updated="${not_updated}\n  ${message}"
 }
+warn() {
+    name=$1
+    shift
+    reason=$*
+    message="$YELLOW$name: $reason$NC"
+    echo "$message"
+    not_updated="${not_updated}\n  ${message}"
+}
 
 # Check for control master configurations
 if ssh -G github.com | grep -q controlpath; then
@@ -100,28 +109,50 @@ for dir in $subdirs; do
 
     if [[ -d ${MODULE_ROOT}/$dir/.git ]]; then
         cd "${MODULE_ROOT}"/"$dir" || continue
+        # Work out the branch/remote information
+        main="$(git-get-main-branch .)"
+        upstream_branch="$(git rev-parse --abbrev-ref --symbolic-full-name "$main@{u}")"
+        tracking_remote="${upstream_branch%/*}"
+        tracking_branch="${upstream_branch#*/}"
+
         # Detect if this is a git-svn repository
         if [[ -d .git/svn && -n "$(ls -A .git/svn/)" ]]; then
             update_command='git svn rebase'
             echo "Updating $dir (git-svn)"
         else
             echo "Updating $dir "
-            update_command='git pull --ff-only origin'
+            update_command="git pull --ff-only $tracking_remote"
         fi
+
         # Conditions for trying are the same for normal/svn
-        main="$(git-get-main-branch .)"
         if [[ $(git rev-parse --abbrev-ref HEAD) != "$main" ]]; then
-            git fetch || true
-            fail "$name" "Not on $main branch. Not attempting update."
+            # Not on main branch - we want to update it (ff only) but warn
+            # that we aren't on the main branch
+
+            # Try to fetch this straight to the branch
+            if ! git fetch "$tracking_remote" "$tracking_branch:$main"; then
+                fail "$name" "Not on $main branch, and could not update"
+            else
+                warn "$name" "Not on $main branch, but updated the local pointer"
+            fi
         elif ! git diff --no-ext-diff --quiet; then
-            git fetch || true
-            fail "$name" "Changes to working directory; cannot update."
+            # Let's try an update anyway - but be safe and stash it
+            original_changes="$(git stash create)"
+            git stash store "$original_changes"
+            original_commit="$(git rev-parse HEAD)"
+            if ! ${update_command}; then
+                fail "$name" "Tried to smartly update changed working directory but failed"
+                # Restore the original state
+                git reset --hard "$original_commit"
+                git stash pop
+            else
+                git stash drop
+            fi
         else
             if ! ${update_command}; then
                 fail "$name" "git command failed."
             fi
         fi
-
         echo ""
     elif [[ -d ${MODULE_ROOT}/$dir/.svn ]]; then
         echo "Updating $dir (svn)"
