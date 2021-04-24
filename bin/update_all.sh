@@ -121,7 +121,7 @@ for dir in $subdirs; do
             echo "Updating $dir (git-svn)"
         else
             echo "Updating $dir "
-            update_command="git pull --ff-only $tracking_remote"
+            update_command="git pull --ff-only --no-rebase $tracking_remote"
         fi
 
         # Conditions for trying are the same for normal/svn
