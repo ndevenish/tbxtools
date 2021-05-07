@@ -158,7 +158,7 @@ def _update_comms_queue(comms, path, *args, running=True, error=False):
 
 def find_all_repos(path: Path) -> List[Task]:
     repos = []
-    for subdir in path.glob("**/"):
+    for subdir in path.glob("*/"):
         if (subdir / ".git").is_dir():
             repos.append(Task("git", subdir))
         if (subdir / ".svn").is_dir():
