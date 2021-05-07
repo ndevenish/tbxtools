@@ -124,17 +124,18 @@ def update_git_repo(path: Path, update):
             git.check_call(["reset", "--hard", original_commit])
             git.check_call(["stash", "pop"])
             return
-        success_message = "Success. Updated background branch {main}."
+        success_message = f"Success for background branch {main}."
     else:
         update("Running git", *update_command)
         if not git.call(update_command):
             update("Failed to update.", error=True)
             return
 
-    if original_commit == git.rev_parse(main):
+    new_commit = git.rev_parse(main)
+    if original_commit == new_commit:
         update(f"{success_message} Already up to date.")
     else:
-        update("Success.")
+        update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}")
 
 
 def update_repo(update_function, path, communicator):
