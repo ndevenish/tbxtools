@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
-
 import functools
+import sys
+import textwrap
 import time
 import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
 from queue import Queue
-from subprocess import (
-    DEVNULL,
-    PIPE,
-    STDOUT,
-    CalledProcessError,
-    check_call,
-    check_output,
-)
+from subprocess import PIPE, STDOUT, CalledProcessError, Popen, check_output
 from typing import Dict, List, NamedTuple
 
 R = "\033[31m"
 G = "\033[32m"
 B = "\033[34m"
 NC = "\033[0m"
+BOLD = "\033[1m"
 UP_AND_CLEAR = "\033[F\033[2K"
 
 MAX_CONCURRENT = 3
@@ -44,18 +39,63 @@ EXIT_THREADS = False
 class Git(object):
     def __init__(self, repo, updater=None):
         self.repo = repo
+        self.last_output = []
+        if updater:
+            self.updater = updater
+        else:
+            self.updater = lambda *args, **kwargs: None
 
     def check_output(self, command):
-        return check_output(
-            ["git"] + list(command), cwd=self.repo, stderr=DEVNULL, encoding="utf-8"
-        ).strip()
+        try:
+            output = check_output(
+                ["git"] + list(command), cwd=self.repo, stderr=STDOUT, encoding="utf-8"
+            ).strip()
+        except CalledProcessError as e:
+            self.last_output = e.output
+            raise
+        self.last_output = output
+        return output
 
-    def check_call(self, command):
-        check_call(
-            ["git"] + list(command), cwd=self.repo, stderr=DEVNULL, stdout=DEVNULL
+    def check_call(self, command: List[str], sticky_lines: List[str] = []):
+        """Run check_call on git, but get output as updates.
+
+        Logic being: You are calling this command for it's action, not
+        to parse it's output. If we weren't in a multi-threaded scenario
+        we would be letting this print straight to the terminal.
+
+        Args:
+            command: The argv list to pass to git
+            sticky_lines:
+                If specified, only lines that contain one or more of
+                these strings will be sent to the updater. Otherwise,
+                all lines will be sent.
+        """
+        cmd = ["git"] + command
+        process = Popen(
+            cmd,
+            stderr=STDOUT,
+            stdout=PIPE,
+            encoding="utf-8",
+            bufsize=1,
+            cwd=self.repo,
+            universal_newlines=True,
         )
+        lines = []
+        for line in process.stdout:
+            lines.append(line)
+            # Ignore lines with file changes
+            if sticky_lines and any(x in line for x in sticky_lines):
+                self.updater(line)
+            elif not sticky_lines:
+                self.updater(line)
+
+        self.last_output = "".join(lines)
+        code = process.poll()
+        if code != 0:
+            raise CalledProcessError(code, cmd)
 
     def call(self, command):
+        """Run check_call, but explicitly for the return value"""
         try:
             self.check_call(command)
         except CalledProcessError:
@@ -68,9 +108,7 @@ class Git(object):
 
     def get_main_branch(self):
         if self.call(["show-ref", "-q", "--verify", "refs/remotes/origin/main"]):
-            # self._main = "main"
             return "main"
-        # self._master = "master"
         return "master"
 
     def get_upstream_branch(self, branch):
@@ -83,9 +121,8 @@ class Git(object):
         return self.check_output(["rev-parse", reference])
 
 
-def update_git_repo(path: Path, update):
-    git = Git(path)
-    success_message = "Success."
+def update_git_repo(path: Path, update, error_feedback):
+    git = Git(path, updater=update)
     main = git.get_main_branch()
     original_commit = git.rev_parse(main)
     tracking_remote, tracking_branch = git.get_upstream_branch(main)
@@ -132,16 +169,16 @@ def update_git_repo(path: Path, update):
             return
 
     new_commit = git.rev_parse(main)
-    if original_commit == new_commit:
-        update(f"{success_message} Already up to date.")
-    else:
-        update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}.")
+    # if original_commit == new_commit:
+    #     update(f"{success_message} Already up to date.")
+    # else:
+    #     update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}.")
 
 
-def update_repo(update_function, path, communicator):
+def update_repo(update_function, path, communicator, error_feedback):
     "Shim function to make catching/diagnosing exceptions easier"
     try:
-        update_function(path, communicator)
+        update_function(path, communicator, error_feedback)
     except Exception:
         traceback.print_exc()
         print("\n" * 30)
@@ -154,7 +191,8 @@ def update_svn_repo(path: Path, updater):
 
 def _update_comms_queue(comms, path, *args, running=True, error=False):
     """Convenience function for sending an update"""
-    comms.put(TaskUpdate(path, running, error, " ".join(str(x) for x in args)))
+    message = " ".join(str(x) for x in args).rstrip().splitlines()[-1]
+    comms.put(TaskUpdate(path, running, error, message))
 
 
 def find_all_repos(path: Path) -> List[Task]:
@@ -168,13 +206,15 @@ def find_all_repos(path: Path) -> List[Task]:
 
 
 updaters = {"git": update_git_repo}
-tasks = find_all_repos(Path.cwd())
+tasks = find_all_repos(Path.cwd())[-1:]
 paths = [t.path for t in tasks]
 
 task_name_width = max(len(p.path.name) for p in tasks)
 
 active_tasks: Dict[Path, Future] = {}
 task_comms: "Queue[TaskUpdate]" = Queue()
+# Feedback channel for errors. Any log output will be sent here
+error_comms = Queue()
 
 # How many active tasks did we have last time
 highest_task = 0
@@ -189,6 +229,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 updaters[kind],
                 path,
                 functools.partial(_update_comms_queue, task_comms, path),
+                error_comms,
             )
             task_status[path] = TaskUpdate(path, True, False, "Starting")
 
@@ -261,6 +302,18 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 )
             print(update_message.getvalue(), flush=True, end="")
 
+        # Now, handle printing any error logs
+        errors = {}
+        while not error_comms.empty():
+            path, error = error_comms.get()
+            errors[path] = error
+
+        for path in sorted(errors.keys()):
+            print(f"{BOLD}{R}Error: Could not update {path}:{NC}{R}")
+            print(textwrap.indent(errors[path], "    ") + "NC")
+
+        if errors:
+            sys.exit(1)
     except KeyboardInterrupt:
         EXIT_THREADS = True
     finally:
