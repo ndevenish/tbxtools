@@ -2,6 +2,7 @@
 
 import functools
 import time
+import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
@@ -78,11 +79,15 @@ class Git(object):
         )
         return upstream.strip().split("/", maxsplit=1)
 
+    def rev_parse(self, reference):
+        return self.check_output(["rev-parse", reference])
+
 
 def update_git_repo(path: Path, update):
     git = Git(path)
-
+    success_message = "Success."
     main = git.get_main_branch()
+    original_commit = git.rev_parse(main)
     tracking_remote, tracking_branch = git.get_upstream_branch(main)
     update(f"main branch is {main}")
     update("upstream is", tracking_remote, tracking_branch)
@@ -100,15 +105,12 @@ def update_git_repo(path: Path, update):
             update(f"Running fetch for background branch {main}")
             if not git.call(["fetch", tracking_remote, f"{tracking_branch}:{main}"]):
                 update(f"Not on {main} branch and could not update.")
-            else:
-                update("Success.")
+                return
         except CalledProcessError:
             update(f"Not on {main} branch, and could not update", error=True)
-        return
-
-    # Check if we have local changes
-    update("Checking for changes in local working directory")
-    if not git.call(["diff", "--no-ext-diff", "--quiet"]):
+    elif not git.call(["diff", "--no-ext-diff", "--quiet"]):
+        # Check if we have local changes
+        update("Checking for changes in local working directory")
         # We have a dirty working area. Let's stash this and try anyway
         update("Working directory is dirty: Creating stash to preserve state")
         stash = git.check_output(["stash", "create"])
@@ -122,15 +124,27 @@ def update_git_repo(path: Path, update):
             git.check_call(["reset", "--hard", original_commit])
             git.check_call(["stash", "pop"])
             return
+        success_message = "Success. Updated background branch {main}."
+    else:
+        update("Running git", *update_command)
+        if not git.call(update_command):
+            update("Failed to update.", error=True)
+            return
+
+    if original_commit == git.rev_parse(main):
+        update(f"{success_message} Already up to date.")
+    else:
         update("Success.")
-        return
 
-    update("Running git", *update_command)
-    if not git.call(update_command):
-        update("Failed to update.", error=True)
-        return
 
-    update("Success.")
+def update_repo(update_function, path, communicator):
+    "Shim function to make catching/diagnosing exceptions easier"
+    try:
+        update_function(path, communicator)
+    except Exception:
+        traceback.print_exc()
+        print("\n" * 30)
+        raise
 
 
 def update_svn_repo(path: Path, updater):
@@ -170,13 +184,15 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
         print(f"Running update for {len(tasks)} repositories:")
         for kind, path in tasks:
             active_tasks[path] = pool.submit(
+                update_repo,
                 updaters[kind],
                 path,
                 functools.partial(_update_comms_queue, task_comms, path),
             )
             task_status[path] = TaskUpdate(path, True, False, "Starting")
 
-        print("Starting")
+        # Extra line because we start where the top of the table should be
+        print()
         while active_tasks:
             time.sleep(0.1)
             earliest_task_updated = highest_task + 1
