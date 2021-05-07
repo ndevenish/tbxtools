@@ -135,7 +135,7 @@ def update_git_repo(path: Path, update):
     if original_commit == new_commit:
         update(f"{success_message} Already up to date.")
     else:
-        update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}")
+        update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}.")
 
 
 def update_repo(update_function, path, communicator):
