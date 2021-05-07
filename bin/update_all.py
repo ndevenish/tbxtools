@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 
-import random
-import subprocess
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
 from queue import Queue
+from subprocess import (
+    DEVNULL,
+    PIPE,
+    STDOUT,
+    CalledProcessError,
+    check_call,
+    check_output,
+)
 from typing import Dict, List, NamedTuple
 
 R = "\033[31m"
@@ -15,7 +21,7 @@ B = "\033[34m"
 NC = "\033[0m"
 UP_AND_CLEAR = "\033[F\033[2K"
 
-MAX_CONCURRENT = 10
+MAX_CONCURRENT = 3
 
 
 class TaskUpdate(NamedTuple):
@@ -33,23 +39,95 @@ class Task(NamedTuple):
 EXIT_THREADS = False
 
 
-def update_git_repo(path: Path, comms: Queue, exit_notice: Queue):
-    # global EXIT_THREADS
-    # comms.put(TaskUpdate(path, True, False, "Starting"))
-    # Start with .git
-    n = random.randint(4, 10)
-    for i in range(n):
-        # if not exit_notice.empty():
-        #     return
-        if EXIT_THREADS:
+class Git(object):
+    def __init__(self, repo):
+        self.repo = repo
+
+    def check_output(self, command):
+        return check_output(
+            ["git"] + list(command), cwd=self.repo, stderr=DEVNULL, encoding="utf-8"
+        ).strip()
+
+    def check_call(self, command):
+        check_call(
+            ["git"] + list(command), cwd=self.repo, stderr=DEVNULL, stdout=DEVNULL
+        )
+
+    def call(self, command):
+        try:
+            self.check_call(command)
+        except CalledProcessError:
+            return False
+        else:
+            return True
+
+    def get_current_branch(self):
+        return self.check_output(["rev-parse", "--abbrev-ref", "HEAD"])
+
+    def get_main_branch(self):
+        if self.call(["show-ref", "-q", "--verify", "refs/remotes/origin/main"]):
+            # self._main = "main"
+            return "main"
+        # self._master = "master"
+        return "master"
+
+    def get_upstream_branch(self, branch):
+        upstream = self.check_output(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", f"{branch}@{{u}}"]
+        )
+        return upstream.strip().split("/", maxsplit=1)
+
+
+def update_git_repo(path: Path, comms: Queue):
+    def update(*args, running=True, error=False):
+        """Convenience function for sending an update"""
+        comms.put(TaskUpdate(path, running, error, " ".join(str(x) for x in args)))
+
+    git = Git(path)
+    # Error out if git-svn repository
+    if (path / ".git" / "svn").is_dir():
+        raise NotImplementedError("git-svn not yet implemented. Manually update.")
+
+    main = git.get_main_branch()
+    tracking_remote, tracking_branch = git.get_upstream_branch(main)
+    update(f"main branch is {main}")
+    update("upstream is", tracking_remote, tracking_branch)
+    update_command = ["pull", "--ff-only", "--no-rebase", tracking_remote]
+
+    # If not on main branch, then try to update it in the background
+    if not git.get_current_branch() == main:
+        try:
+            update(f"Running fetch for background branch {main}")
+            # time.sleep(5)
+            if not git.call(["fetch", tracking_remote, f"{tracking_branch}:{main}"]):
+                update(f"Not on {main} branch and could not update.")
+            else:
+                update("Success.")
+        except CalledProcessError:
+            update(f"Not on {main} branch, and could not update", error=True)
+        return
+
+    # Check if we have local changes
+    if not git.call(["diff", "--no-ext-diff", "--quiet"]):
+        # We have a dirty working area. Let's stash this and try anyway
+        stash = git.check_output(["stash", "create"])
+        git.check_call(["stash", "store", stash])
+        original_commit = git.check_output(["rev-parse", "HEAD"])
+        if not git.call(update_command):
+            update(
+                "Tried to smartly update dirty working directory but failed", error=True
+            )
+            git.check_call(["reset", "--hard", original_commit])
+            git.check_call(["stash", "pop"])
             return
-        # print(path.name, i, EXIT_THREADS)
-        comms.put(TaskUpdate(path, True, False, str(n - i)))
-        time.sleep(1)
-    if n >= 8:
-        comms.put(TaskUpdate(path, False, False, "Completed"))
-    else:
-        comms.put(TaskUpdate(path, False, True, "Failed"))
+        update("Success.")
+        return
+
+    if not git.call(update_command):
+        update("Failed to update.", error=True)
+        return
+
+    update("Success.")
 
 
 def find_all_repos(path: Path) -> List[Task]:
@@ -68,7 +146,6 @@ task_name_width = max(len(p.path.name) for p in tasks)
 
 active_tasks: Dict[Path, Future] = {}
 task_comms: "Queue[TaskUpdate]" = Queue()
-exit_comms = Queue()
 
 # How many active tasks did we have last time
 highest_task = 0
@@ -78,9 +155,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
         # Submit all tasks at once
         print("Submitting")
         for kind, path in tasks:
-            active_tasks[path] = pool.submit(
-                updaters[kind], path, task_comms, exit_comms
-            )
+            active_tasks[path] = pool.submit(updaters[kind], path, task_comms)
             task_status[path] = TaskUpdate(path, True, False, "Starting")
 
         print("Starting")
@@ -103,10 +178,18 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 if fut.done():
                     to_remove.append(path)
                     if status.running:
-                        task_status[path] = status._replace(running=False)
+                        status = status._replace(running=False)
                         earliest_task_updated = min(
-                            earliest_task_updated, paths.index(update.path)
+                            earliest_task_updated, paths.index(status.path)
                         )
+                    exception = fut.exception()
+                    if exception:
+                        status = status._replace(
+                            status=f"{type(exception).__name__}: {exception}",
+                            error=True,
+                        )
+                    task_status[path] = status
+
             for path in to_remove:
                 del active_tasks[path]
 
