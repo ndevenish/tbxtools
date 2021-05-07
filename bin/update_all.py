@@ -33,7 +33,16 @@ class Task(NamedTuple):
     path: Path
 
 
+class TaskError(NamedTuple):
+    path: str
+    message: str
+
+
 EXIT_THREADS = False
+
+
+class ExitThread(Exception):
+    """Thrown if we are deep in a thread and encountered an exit request"""
 
 
 class Git(object):
@@ -82,6 +91,11 @@ class Git(object):
         )
         lines = []
         for line in process.stdout:
+            # Good place to check for early exit
+            if EXIT_THREADS:
+                process.terminate()
+                process.poll()
+                raise ExitThread
             lines.append(line)
             # Ignore lines with file changes
             if sticky_lines and any(x in line for x in sticky_lines):
@@ -179,9 +193,12 @@ def update_repo(update_function, path, communicator, error_feedback):
     "Shim function to make catching/diagnosing exceptions easier"
     try:
         update_function(path, communicator, error_feedback)
+    except ExitThread:
+        # We raised to escape a thread because we are shutting down
+        return
     except Exception:
         traceback.print_exc()
-        print("\n" * 30)
+        print("\n" * 12)
         raise
 
 
@@ -302,11 +319,11 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 )
             print(update_message.getvalue(), flush=True, end="")
 
-        # Now, handle printing any error logs
+        # Now, handle printing any error logs - print in sort order
         errors = {}
         while not error_comms.empty():
-            path, error = error_comms.get()
-            errors[path] = error
+            error = error_comms.get()
+            errors[error.path] = error.message
 
         for path in sorted(errors.keys()):
             print(f"{BOLD}{R}Error: Could not update {path}:{NC}{R}")
@@ -315,6 +332,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
         if errors:
             sys.exit(1)
     except KeyboardInterrupt:
+        # Make sure that our threads all shut down
         EXIT_THREADS = True
     finally:
         EXIT_THREADS = True
