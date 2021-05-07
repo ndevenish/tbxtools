@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import functools
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from io import StringIO
@@ -40,7 +41,7 @@ EXIT_THREADS = False
 
 
 class Git(object):
-    def __init__(self, repo):
+    def __init__(self, repo, updater=None):
         self.repo = repo
 
     def check_output(self, command):
@@ -78,27 +79,25 @@ class Git(object):
         return upstream.strip().split("/", maxsplit=1)
 
 
-def update_git_repo(path: Path, comms: Queue):
-    def update(*args, running=True, error=False):
-        """Convenience function for sending an update"""
-        comms.put(TaskUpdate(path, running, error, " ".join(str(x) for x in args)))
-
+def update_git_repo(path: Path, update):
     git = Git(path)
-    # Error out if git-svn repository
-    if (path / ".git" / "svn").is_dir():
-        raise NotImplementedError("git-svn not yet implemented. Manually update.")
 
     main = git.get_main_branch()
     tracking_remote, tracking_branch = git.get_upstream_branch(main)
     update(f"main branch is {main}")
     update("upstream is", tracking_remote, tracking_branch)
-    update_command = ["pull", "--ff-only", "--no-rebase", tracking_remote]
+    # Error out if git-svn repository
+    if (path / ".git" / "svn").is_dir() and git.get_current_branch() == main:
+        # Legacy logic, just carry this over - this might not work
+        update("Is git-svn repository")
+        update_command = ["svn", "rebase"]
+    else:
+        update_command = ["pull", "--ff-only", "--no-rebase", tracking_remote]
 
     # If not on main branch, then try to update it in the background
     if not git.get_current_branch() == main:
         try:
             update(f"Running fetch for background branch {main}")
-            # time.sleep(5)
             if not git.call(["fetch", tracking_remote, f"{tracking_branch}:{main}"]):
                 update(f"Not on {main} branch and could not update.")
             else:
@@ -108,11 +107,14 @@ def update_git_repo(path: Path, comms: Queue):
         return
 
     # Check if we have local changes
+    update("Checking for changes in local working directory")
     if not git.call(["diff", "--no-ext-diff", "--quiet"]):
         # We have a dirty working area. Let's stash this and try anyway
+        update("Working directory is dirty: Creating stash to preserve state")
         stash = git.check_output(["stash", "create"])
         git.check_call(["stash", "store", stash])
         original_commit = git.check_output(["rev-parse", "HEAD"])
+        update("Running git ", *update_command)
         if not git.call(update_command):
             update(
                 "Tried to smartly update dirty working directory but failed", error=True
@@ -123,6 +125,7 @@ def update_git_repo(path: Path, comms: Queue):
         update("Success.")
         return
 
+    update("Running git", *update_command)
     if not git.call(update_command):
         update("Failed to update.", error=True)
         return
@@ -130,11 +133,22 @@ def update_git_repo(path: Path, comms: Queue):
     update("Success.")
 
 
+def update_svn_repo(path: Path, updater):
+    pass
+
+
+def _update_comms_queue(comms, path, *args, running=True, error=False):
+    """Convenience function for sending an update"""
+    comms.put(TaskUpdate(path, running, error, " ".join(str(x) for x in args)))
+
+
 def find_all_repos(path: Path) -> List[Task]:
     repos = []
     for subdir in path.glob("**/"):
         if (subdir / ".git").is_dir():
             repos.append(Task("git", subdir))
+        if (subdir / ".svn").is_dir():
+            repos.append(Task("svn", subdir))
     return sorted(repos)
 
 
@@ -153,9 +167,13 @@ task_status = {}
 with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
     try:
         # Submit all tasks at once
-        print("Submitting")
+        print(f"Running update for {len(tasks)} repositories:")
         for kind, path in tasks:
-            active_tasks[path] = pool.submit(updaters[kind], path, task_comms)
+            active_tasks[path] = pool.submit(
+                updaters[kind],
+                path,
+                functools.partial(_update_comms_queue, task_comms, path),
+            )
             task_status[path] = TaskUpdate(path, True, False, "Starting")
 
         print("Starting")
@@ -222,7 +240,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                     linecolour = G
                     colour = ""
                 update_message.write(
-                    f"{linecolour}{path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
+                    f"{linecolour}    {path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
                 )
             print(update_message.getvalue(), flush=True, end="")
 
