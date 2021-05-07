@@ -141,28 +141,9 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 update_message.write(
                     f"{linecolour}{path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
                 )
-            # print(".")
             print(update_message.getvalue(), flush=True, end="")
 
-    except BaseException:
-        print("Shutting down workers....")
-        # exit_comms.put(True)
+    except KeyboardInterrupt:
         EXIT_THREADS = True
-        raise
-        # while len(active_tasks) < MAX_CONCURRENT and tasks:
-        #     # Launch one of the waiting updates
-        #     kind, path = tasks.pop(0)
-        #     active_tasks[path] = (path, pool.submit(updaters[kind](path, task_comms)))
-        #     task_status[path] = TaskUpdate(path, True, False, "Starting")
-
-        # # Print out the list of currently running tasks
-        # update_text = StringIO()
-        # # Clear everything we last wrote
-        # update_text.write(UP_AND_CLEAR * last_active_tasks)
-
-        # # Process any new task updates
-        # try:
-        #     while True:
-        #         update = queue.get(block=True)
-
-        # except Empty:
+    finally:
+        EXIT_THREADS = True
