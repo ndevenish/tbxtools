@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import functools
+import os
 import sys
 import textwrap
 import time
@@ -54,10 +55,15 @@ class Git(object):
         else:
             self.updater = lambda *args, **kwargs: None
 
-    def check_output(self, command):
+    def check_output(self, command, **kwargs):
         try:
+            cmd = ["git"] + list(command)
             output = check_output(
-                ["git"] + list(command), cwd=self.repo, stderr=STDOUT, encoding="utf-8"
+                cmd,
+                cwd=kwargs.pop("cwd", self.repo),
+                stderr=kwargs.pop("stderr", STDOUT),
+                encoding=kwargs.pop("encoding", "utf-8"),
+                **kwargs,
             ).strip()
         except CalledProcessError as e:
             self.last_output = e.output
@@ -65,7 +71,7 @@ class Git(object):
         self.last_output = output
         return output
 
-    def check_call(self, command: List[str], sticky_lines: List[str] = []):
+    def check_call(self, command: List[str], sticky_lines: List[str] = [], **kwargs):
         """Run check_call on git, but get output as updates.
 
         Logic being: You are calling this command for it's action, not
@@ -79,15 +85,19 @@ class Git(object):
                 these strings will be sent to the updater. Otherwise,
                 all lines will be sent.
         """
+        assert kwargs.pop("stderr", STDOUT) == STDOUT
+        assert kwargs.pop("stdout", PIPE) == PIPE
+        self.updater("Running git", *command)
         cmd = ["git"] + command
         process = Popen(
             cmd,
             stderr=STDOUT,
             stdout=PIPE,
-            encoding="utf-8",
-            bufsize=1,
-            cwd=self.repo,
-            universal_newlines=True,
+            encoding=kwargs.pop("encoding", "utf-8"),
+            bufsize=kwargs.pop("bufsize", 1),
+            cwd=kwargs.pop("cwd", self.repo),
+            universal_newlines=kwargs.pop("universal_newlines", True),
+            **kwargs,
         )
         lines = []
         for line in process.stdout:
@@ -104,14 +114,15 @@ class Git(object):
                 self.updater(line)
 
         self.last_output = "".join(lines)
+        # Finished output, wait for the process to finish
         code = process.poll()
         if code != 0:
             raise CalledProcessError(code, cmd)
 
-    def call(self, command):
+    def call(self, *args, **kwargs):
         """Run check_call, but explicitly for the return value"""
         try:
-            self.check_call(command)
+            self.check_call(*args, **kwargs)
         except CalledProcessError:
             return False
         else:
@@ -135,75 +146,95 @@ class Git(object):
         return self.check_output(["rev-parse", reference])
 
 
-def update_git_repo(path: Path, update, error_feedback):
+def update_git_repo(path: Path, update, error_comms):
     git = Git(path, updater=update)
     main = git.get_main_branch()
+    # Save the current commit of this branch so we know if we changed
     original_commit = git.rev_parse(main)
     tracking_remote, tracking_branch = git.get_upstream_branch(main)
     update(f"main branch is {main}")
     update("upstream is", tracking_remote, tracking_branch)
-    # Error out if git-svn repository
+
+    # Decide which command to run to update
     if (path / ".git" / "svn").is_dir() and git.get_current_branch() == main:
-        # Legacy logic, just carry this over - this might not work
+        # This is a git-svn repository - just carry over the legacy
+        # logic, this isn't very well tested and might not work
         update("Is git-svn repository")
-        update_command = ["svn", "rebase"]
+
+        def git_do_update():
+            return git.call(["svn", "rebase"])
+
     else:
-        update_command = ["pull", "--ff-only", "--no-rebase", tracking_remote]
+
+        def git_do_update():
+            return git.call(
+                ["pull", "--ff-only", "--no-rebase", tracking_remote],
+                sticky_lines={
+                    "insertions",
+                    "changed",
+                    "deletions",
+                    "Fast-forward",
+                    "Updating",
+                },
+            )
+
+    # Allow overriding of messages
+    success_message = "Updated {0}...{1}."
+    nochange_message = "Already up to date."
 
     # If not on main branch, then try to update it in the background
     if not git.get_current_branch() == main:
-        try:
-            update(f"Running fetch for background branch {main}")
-            if not git.call(["fetch", tracking_remote, f"{tracking_branch}:{main}"]):
-                update(f"Not on {main} branch and could not update.")
-                return
-        except CalledProcessError:
-            update(f"Not on {main} branch, and could not update", error=True)
+        update(f"{main} not actively checked out branch. Updating background pointer")
+        if not git.call(["fetch", tracking_remote, f"{tracking_branch}:{main}"]):
+            error_comms.put(TaskError(path, git.last_output))
+            update(f"Not on {main} branch, and could not update.", error=True)
+            return
+        success_message = f"Updated non-checked-out branch {main} {{0}}...{{1}}."
+        nochange_message = f"Non-checked-out branch {main} already up to date."
     elif not git.call(["diff", "--no-ext-diff", "--quiet"]):
-        # Check if we have local changes
-        update("Checking for changes in local working directory")
         # We have a dirty working area. Let's stash this and try anyway
         update("Working directory is dirty: Creating stash to preserve state")
         stash = git.check_output(["stash", "create"])
         git.check_call(["stash", "store", stash])
-        original_commit = git.check_output(["rev-parse", "HEAD"])
-        update("Running git ", *update_command)
-        if not git.call(update_command):
+        original_branch_commit = git.check_output(["rev-parse", "HEAD"])
+
+        if not git_do_update():
             update(
                 "Tried to smartly update dirty working directory but failed", error=True
             )
-            git.check_call(["reset", "--hard", original_commit])
+            error_comms.put(TaskError(path, git.last_output))
+            # Restore the original state before we tried this
+            git.check_call(["reset", "--hard", original_branch_commit])
             git.check_call(["stash", "pop"])
             return
-        success_message = f"Success for background branch {main}."
+
+        # We succeeded - did anything change?
+        nochange_message = "Already up to date, with working changes"
+        success_message = f"Merged branch {main} {{0}}..{{1}} into working changes"
     else:
-        update("Running git", *update_command)
-        if not git.call(update_command):
+        if not git_do_update():
             update("Failed to update.", error=True)
+            error_comms.put(TaskError(path, git.last_output))
             return
 
+    # Decide which message to send - did we actually make a change?
     new_commit = git.rev_parse(main)
-    # if original_commit == new_commit:
-    #     update(f"{success_message} Already up to date.")
-    # else:
-    #     update(f"{success_message} Updated {original_commit[:6]}..{new_commit[:6]}.")
+    if original_commit == new_commit:
+        update(nochange_message)
+    else:
+        update(success_message.format(original_commit[:6], new_commit[:6]))
 
 
-def update_repo(update_function, path, communicator, error_feedback):
+def update_repo(update_function, path, communicator, error_comms):
     "Shim function to make catching/diagnosing exceptions easier"
     try:
-        update_function(path, communicator, error_feedback)
+        update_function(path, communicator, error_comms)
     except ExitThread:
         # We raised to escape a thread because we are shutting down
         return
     except Exception:
-        traceback.print_exc()
-        print("\n" * 12)
+        error_comms.put(TaskError(path, traceback.format_exc()))
         raise
-
-
-def update_svn_repo(path: Path, updater):
-    pass
 
 
 def _update_comms_queue(comms, path, *args, running=True, error=False):
@@ -213,6 +244,7 @@ def _update_comms_queue(comms, path, *args, running=True, error=False):
 
 
 def find_all_repos(path: Path) -> List[Task]:
+    """Find all repository-like folders that we can update"""
     repos = []
     for subdir in path.glob("*/"):
         if (subdir / ".git").is_dir():
@@ -223,7 +255,7 @@ def find_all_repos(path: Path) -> List[Task]:
 
 
 updaters = {"git": update_git_repo}
-tasks = find_all_repos(Path.cwd())[-1:]
+tasks = find_all_repos(Path.cwd())
 paths = [t.path for t in tasks]
 
 task_name_width = max(len(p.path.name) for p in tasks)
@@ -233,7 +265,7 @@ task_comms: "Queue[TaskUpdate]" = Queue()
 # Feedback channel for errors. Any log output will be sent here
 error_comms = Queue()
 
-# How many active tasks did we have last time
+# Keep track of how many active tasks we had last time
 highest_task = 0
 task_status = {}
 with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
@@ -248,13 +280,18 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 functools.partial(_update_comms_queue, task_comms, path),
                 error_comms,
             )
-            task_status[path] = TaskUpdate(path, True, False, "Starting")
+            task_status[path] = TaskUpdate(path, True, False, "")
 
-        # Extra line because we start where the top of the table should be
-        print()
+        # Pre-print as many as we can fit on the screen without going over
+        _, tlines = os.get_terminal_size()
+        highest_task = min(len(tasks) - 1, tlines - 3)
+        print("\n".join([f"    {path.name}:" for _, path in tasks]))
+
         while active_tasks:
             time.sleep(0.1)
+            # Start this with a value outside the highest task, so we know nothing updated
             earliest_task_updated = highest_task + 1
+            # Pull down all the update messages
             while not task_comms.empty():
                 update = task_comms.get()
                 # Keep track of the earliest task so we can update efficiently
@@ -298,10 +335,10 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
 
             # Now, rewrite all of the status messages
             for path in paths[earliest_task_updated:]:
-                if path in active_tasks and not (
-                    active_tasks[path].running() or active_tasks[path].done()
-                ):
-                    continue
+                # if path in active_tasks and not (
+                #     active_tasks[path].running() or active_tasks[path].done()
+                # ):
+                #     continue
                 task_index = paths.index(path)
                 highest_task = max(highest_task, task_index)
                 status = task_status[path]
@@ -327,7 +364,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
 
         for path in sorted(errors.keys()):
             print(f"{BOLD}{R}Error: Could not update {path}:{NC}{R}")
-            print(textwrap.indent(errors[path], "    ") + "NC")
+            print(textwrap.indent(errors[path], "    ") + NC)
 
         if errors:
             sys.exit(1)
