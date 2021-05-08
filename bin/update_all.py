@@ -19,7 +19,7 @@ NC = "\033[0m"
 BOLD = "\033[1m"
 UP_AND_CLEAR = "\033[F\033[2K"
 
-MAX_CONCURRENT = 3
+MAX_CONCURRENT = 5
 
 
 class TaskUpdate(NamedTuple):
@@ -37,6 +37,12 @@ class Task(NamedTuple):
 class TaskError(NamedTuple):
     path: str
     message: str
+
+
+class GitBranch(NamedTuple):
+    name: str
+    sha: str
+    upstream: str = None
 
 
 EXIT_THREADS = False
@@ -107,11 +113,12 @@ class Git(object):
                 process.poll()
                 raise ExitThread
             lines.append(line)
-            # Ignore lines with file changes
-            if sticky_lines and any(x in line for x in sticky_lines):
-                self.updater(line)
-            elif not sticky_lines:
-                self.updater(line)
+            if line:
+                # Ignore lines with file changes
+                if sticky_lines and any(x in line for x in sticky_lines):
+                    self.updater(line)
+                elif not sticky_lines:
+                    self.updater(line)
 
         self.last_output = "".join(lines)
         # Finished output, wait for the process to finish
@@ -145,10 +152,28 @@ class Git(object):
     def rev_parse(self, reference):
         return self.check_output(["rev-parse", reference])
 
+    def get_all_branches(self):
+        """Get information about all branches"""
+
+        # Get a list of all local branches in form
+        # branchname SHA1 remote/remotebranch
+        # branchname SHA1 remote/remotebranch
+        # ....
+        output = self.check_output(
+            ["branch", "--format='%(refname:short) %(objectname) %(upstream:short)'"]
+        )
+        branches = {}
+        for line in output.splitlines():
+            branch = GitBranch(*line.split())
+            branches[branch.name] = branch
+        return branches
+
 
 def update_git_repo(path: Path, update, error_comms):
     git = Git(path, updater=update)
+    # branch = git.get_current_branch()
     main = git.get_main_branch()
+
     # Save the current commit of this branch so we know if we changed
     original_commit = git.rev_parse(main)
     tracking_remote, tracking_branch = git.get_upstream_branch(main)
@@ -239,7 +264,9 @@ def update_repo(update_function, path, communicator, error_comms):
 
 def _update_comms_queue(comms, path, *args, running=True, error=False):
     """Convenience function for sending an update"""
-    message = " ".join(str(x) for x in args).rstrip().splitlines()[-1]
+    message = " ".join(str(x) for x in args).rstrip().splitlines()
+    if message:
+        message = message[-1]
     comms.put(TaskUpdate(path, running, error, message))
 
 
