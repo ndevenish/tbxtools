@@ -224,13 +224,13 @@ def update_git_repo(path: Path, update, error_comms):
         original_branch_commit = git.check_output(["rev-parse", "HEAD"])
 
         if not git_do_update():
-            update(
-                "Tried to smartly update dirty working directory but failed", error=True
-            )
             error_comms.put(TaskError(path, git.last_output))
             # Restore the original state before we tried this
             git.check_call(["reset", "--hard", original_branch_commit])
             git.check_call(["stash", "pop"])
+            update(
+                "Tried to smartly update dirty working directory but failed", error=True
+            )
             return
 
         # We succeeded - did anything change?
@@ -262,7 +262,7 @@ def update_repo(update_function, path, communicator, error_comms):
         raise
 
 
-def _update_comms_queue(comms, path, *args, running=True, error=False):
+def _update_comms_queue(comms, path, *args, running=None, error=None):
     """Convenience function for sending an update"""
     message = " ".join(str(x) for x in args).rstrip().splitlines()
     if message:
@@ -325,6 +325,11 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 earliest_task_updated = min(
                     earliest_task_updated, paths.index(update.path)
                 )
+                # If no error/running field was specified - use the existing
+                if update.error is None:
+                    update = update._replace(error=task_status[update.path].error)
+                if update.running is None:
+                    update = update._replace(running=task_status[update.path].running)
                 task_status[update.path] = update
 
             # Check to see if the future ended (maybe we got no message yet?)
