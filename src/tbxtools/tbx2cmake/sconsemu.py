@@ -10,6 +10,7 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import PosixPath, PurePosixPath, WindowsPath
+from typing import Union
 
 from .import_env import MissingDistError, do_import_patching
 from .intercept import SystemEnvInterceptor, no_intercept_os
@@ -130,15 +131,21 @@ class SharedObject(object):
             sources = [sources]
         self.sources = [PurePosixPath(x) for x in sources]
         self.environment = environment
-        self.target = target
         if not target:
             prefix = ""
             for letters in zip(*[x.stem for x in self.sources]):
                 if len(set(letters)) == 1:
                     prefix = prefix + letters[0]
-            self.target = f"{this_folder_name}/{prefix}".replace("/", "_")
+            self.prefix = prefix
+            self.name = f"#{this_folder_name}/{prefix}"
         elif target.endswith(".o"):
-            self.target = target[:-2].replace("/", "_").lstrip("#")
+            self.prefix = PurePosixPath(target).stem
+            self.name = target[:-2]
+
+        # Pull this from target logic
+        self.origin_path = environment.runner._current_sconscript.relative_to(
+            PurePosixPath(environment.runner.dist_path)
+        ).parent
 
     def __repr__(self):
         return "<SharedObject {}>".format(",".join(str(x) for x in self.sources))
@@ -242,12 +249,15 @@ class SConsEnvironment(object):
         """
         self.runner.sconscript_command(name, exports)
 
-    def _create_target(self, targettype, target, source, **kwargs):
+    def _create_target(
+        self, targettype, target: Union[PurePosixPath, str], source, **kwargs
+    ):
         """Gathers target information from the environment when created"""
         if isinstance(source, str):
             source = [source]
-        if target.startswith("#lib"):
-            target = "#/lib" + target[4:]
+        target = PurePosixPath(target)
+        if target.parts[0].startswith("#lib"):
+            target = PurePosixPath("#", "lib", target.parts[0][4:], *target.parts[1:])
         target = Target(targettype, output_name=target, sources=source)
         target.origin_path = self.runner._current_sconscript.relative_to(
             PurePosixPath(self.runner.dist_path)
@@ -328,7 +338,21 @@ class SConsEnvironment(object):
 
     def SharedObject(self, source, *, target=None):
         logger.debug("Shared object: {}".format(source))
-        return SharedObject(source, self, target=target)
+        # We want to create both a target (to build the shared object) and a reusable
+        # shared object that can be used as a "source' in other targets
+        obj = SharedObject(source, self, target=target)
+        # if any("nanoBragg" in x for x in source):
+        #     breakpoint()
+        target = self._create_target(
+            Target.Type.OBJECT, obj.origin_path / f"shared_{obj.prefix}", source
+        )
+        obj.target = target
+        return obj
+        # Create our shared sources object
+        # # target = Target(Target.Type.OBJECT, obj.target, source)
+        # self._create_target(Target.Type.OBJECT,)
+        # # If no target name, derive one
+        # return self._create_target(Target.Type.OBJECT, target, source)
 
 
 class Target(object):
@@ -340,6 +364,11 @@ class Target(object):
         STATIC = "Static"
         MODULE = "Module"
         CUDALIB = "CUDALib"
+        OBJECT = "Object"
+
+    # @property
+    # def type(self):
+    #     return self._type
 
     def __init__(self, targettype, output_name, sources):
         assert targettype in self.Type

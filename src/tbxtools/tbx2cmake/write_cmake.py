@@ -20,6 +20,7 @@ Options:
                             tbxtools/tbx2cmake/build_info.yaml for the defaults.
 """
 
+import itertools
 import logging
 import os
 import pkgutil
@@ -30,7 +31,7 @@ from pathlib import Path, PurePosixPath
 import yaml
 from docopt import docopt
 
-from .read_scons import read_distribution
+from .read_scons import TBXDistribution, read_distribution
 from .sconsemu import Target
 from .utils import fully_split_path
 
@@ -174,6 +175,7 @@ class CMakeLists(object):
                     Target.Type.SHARED,
                     Target.Type.STATIC,
                     Target.Type.MODULE,
+                    Target.Type.OBJECT,
                 }:
                     blocks.append(CMLLibraryOutput(target))
                 elif target.type in {Target.Type.PROGRAM}:
@@ -300,6 +302,8 @@ class CMLLibraryOutput(CMakeListBlock):
             return "SHARED"
         elif self.target.type == self.target.Type.STATIC:
             return "STATIC"
+        elif self.target.type == self.target.Type.OBJECT:
+            return "OBJECT"
         else:
             raise RuntimeError("Unrecognised library type {}".format(self.target.type))
 
@@ -342,13 +346,19 @@ class CMLLibraryOutput(CMakeListBlock):
         return extra_libs
 
     def __str__(self):
+        # if "shared" in self.target.name:
+        #     breakpoint()
         add_command = self._get_target_add_string()
         add_lib = add_command.format(self.target.name, self.typename)
 
         # Work out if we can put all the sources on one line
         lines = []
 
-        lines.append(_append_list_to(add_lib, self.target.sources, append=(" )", " )")))
+        lines.append(
+            _append_list_to(
+                add_lib, [str(x) for x in self.target.sources], append=(" )", " )")
+            )
+        )
 
         # If the target has been renamed for some reason, we need to handle that here
         if self.target.name != self.target.filename:
@@ -359,7 +369,10 @@ class CMLLibraryOutput(CMakeListBlock):
             )
 
         # Handle non-standard output paths
-        if self.target.output_path not in {"#/lib", ""}:
+        if (
+            self.target.output_path not in {"#/lib", ""}
+            and not self.target.type == Target.Type.OBJECT
+        ):
             if self.target.output_path.startswith("#"):
                 output_path = "${CMAKE_BINARY_DIR}/" + self.target.output_path[1:]
             else:
@@ -545,7 +558,7 @@ def _expand_target_lib_list(target, liblist, values):
         setattr(target, listname, getattr(target, listname) | set(values))
 
 
-def _read_autogen_information(filename, tbx):
+def _read_autogen_information(filename, tbx: TBXDistribution):
     "Read a build information override file and apply to a distribution"
 
     if filename:
@@ -600,6 +613,20 @@ def _read_autogen_information(filename, tbx):
                 )
             )
 
+    # Find *all* shared objects, in all targets
+    all_shared_objects = {
+        obj.name: obj
+        for obj in itertools.chain(
+            *[x.shared_sources for x in tbx.targets if x.shared_sources]
+        )
+    }
+    # all_shared_objects = {
+    #     obj.target: obj
+    #     for obj in [*[x.shared_sources for x in tbx.targets if x.shared_sources]]
+    # }
+
+    # breakpoint()
+
     # Now, some of the sources are relative to "source or build" and so we need to
     # mark them as explicitly generated.
     for target in tbx.targets:
@@ -615,6 +642,13 @@ def _read_autogen_information(filename, tbx):
                 genpath = posixpath.normpath(
                     posixpath.join(target.module.name, relpath, source)
                 )
+                # Check is this one of our shared objects?
+                if source in all_shared_objects:
+                    logger.debug("Found source %s in shared object list", source)
+                    target.sources.remove(source)
+                    target.extra_libs.add(all_shared_objects[source].name)
+                    continue
+
                 assert (
                     genpath in tbx.all_generated
                 ), "Could not find missing source {}:{}".format(target.name, source)
