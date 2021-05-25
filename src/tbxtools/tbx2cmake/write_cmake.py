@@ -564,7 +564,7 @@ def _read_autogen_information(filename, tbx):
 
     # Find all targets that use repository-lookup sources
     for target in tbx.targets:
-        lookup_sources = [x for x in target.sources if x.startswith("#")]
+        lookup_sources = [x for x in target.sources if Path(x).parts[0].startswith("#")]
         unknown = set()
         for source in lookup_sources:
             # If the source is generated, then mark it so and it'll be

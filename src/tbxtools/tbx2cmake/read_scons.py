@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 from pathlib import Path, PurePosixPath
+from typing import Set
 
 import networkx as nx
 import yaml
@@ -138,7 +139,7 @@ def find_libtbx_modules(modulepath, repositories={"cctbx_project"}):
     return modules.values()
 
 
-class TargetCollection(collections.Set):
+class TargetCollection(Set[Target]):
     """Collection wrapper to make operations on target sets easier"""
 
     def __init__(self, distribution):
@@ -197,7 +198,7 @@ class TBXDistribution(object):
         self.other_generated = []
 
     @property
-    def targets(self):
+    def targets(self) -> TargetCollection:
         """Returns a iterator over all targets in the distribution"""
         return self._targetcollection
 
@@ -440,6 +441,7 @@ def read_distribution(module_path):
     _deduplicate_target_names(tbx.targets)
 
     # Classify any python-module-type targets as modules
+    target: Target
     for target in tbx.targets:
         if "boost_python" in target.extra_libs and not target.prefix:
             target.type = Target.Type.MODULE
@@ -454,7 +456,7 @@ def read_distribution(module_path):
     ]
     for target in [x for x in tbx.targets if x.shared_sources]:
         assert len(target.shared_sources) == 1
-        src = target.shared_sources[0].path
+        src = [str(x) for x in target.shared_sources[0].sources]
         if isinstance(src, str):
             src = [src]
         if src in KNOWN_IGNORABLE_SHARED:

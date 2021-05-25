@@ -363,7 +363,7 @@ class Target(object):
         out += "   Output:  {}\n".format(
             os.path.join(self.output_path, self.output_filename)
         )
-        out += "   Sources: {}\n".format(", ".join(self.sources))
+        out += "   Sources: {}\n".format(", ".join(str(x) for x in self.sources))
         if self.shared_sources:
             out += "   SharedObjects: {}\n".format(self.shared_sources)
         if self.extra_libs:
