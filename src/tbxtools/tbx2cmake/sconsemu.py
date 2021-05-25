@@ -341,18 +341,11 @@ class SConsEnvironment(object):
         # We want to create both a target (to build the shared object) and a reusable
         # shared object that can be used as a "source' in other targets
         obj = SharedObject(source, self, target=target)
-        # if any("nanoBragg" in x for x in source):
-        #     breakpoint()
         target = self._create_target(
             Target.Type.OBJECT, obj.origin_path / f"shared_{obj.prefix}", source
         )
         obj.target = target
         return obj
-        # Create our shared sources object
-        # # target = Target(Target.Type.OBJECT, obj.target, source)
-        # self._create_target(Target.Type.OBJECT,)
-        # # If no target name, derive one
-        # return self._create_target(Target.Type.OBJECT, target, source)
 
 
 class Target(object):

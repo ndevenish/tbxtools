@@ -453,14 +453,13 @@ def read_distribution(module_path):
     # Make sure that all instances of shared source objects are known about
     # and collapse them down to unshared sources.
     KNOWN_IGNORABLE_SHARED = [
-        ["numpy_bridge.cpp"],
-        ["lbfgs_fem.cpp"],
-        ["boost_python/outlier_helpers.cc"],
+        # ["numpy_bridge.cpp"],
+        # ["lbfgs_fem.cpp"],
+        # ["boost_python/outlier_helpers.cc"],
         # ["nanoBragg_ext.cpp", "nanoBragg.cpp", "nanoBragg_nks.cpp"],
         # ["gpu_ext.cpp"],
     ]
     for target in [x for x in tbx.targets if x.shared_sources]:
-        # breakpoint()
         assert len(target.shared_sources) == 1
         src = [str(x) for x in target.shared_sources[0].sources]
         if isinstance(src, str):

@@ -346,19 +346,19 @@ class CMLLibraryOutput(CMakeListBlock):
         return extra_libs
 
     def __str__(self):
-        # if "shared" in self.target.name:
-        #     breakpoint()
         add_command = self._get_target_add_string()
         add_lib = add_command.format(self.target.name, self.typename)
 
         # Work out if we can put all the sources on one line
         lines = []
 
-        lines.append(
-            _append_list_to(
-                add_lib, [str(x) for x in self.target.sources], append=(" )", " )")
-            )
+        sources_list = [str(x) for x in self.target.sources]
+        # Now do object libraries
+        sources_list.extend(
+            f"$<TARGET_OBJECTS:{obj.target.name}>" for obj in self.target.shared_sources
         )
+
+        lines.append(_append_list_to(add_lib, sources_list, append=(" )", " )")))
 
         # If the target has been renamed for some reason, we need to handle that here
         if self.target.name != self.target.filename:
@@ -620,13 +620,6 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
             *[x.shared_sources for x in tbx.targets if x.shared_sources]
         )
     }
-    # all_shared_objects = {
-    #     obj.target: obj
-    #     for obj in [*[x.shared_sources for x in tbx.targets if x.shared_sources]]
-    # }
-
-    # breakpoint()
-
     # Now, some of the sources are relative to "source or build" and so we need to
     # mark them as explicitly generated.
     for target in tbx.targets:
@@ -646,7 +639,7 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
                 if source in all_shared_objects:
                     logger.debug("Found source %s in shared object list", source)
                     target.sources.remove(source)
-                    target.extra_libs.add(all_shared_objects[source].name)
+                    target.shared_sources.append(all_shared_objects[source])
                     continue
 
                 assert (
@@ -661,7 +654,7 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
 
     # Warn about any targets with no normal sources
     for target in tbx.targets:
-        if not target.sources:
+        if not target.sources and not target.shared_sources:
             logger.warning(
                 "Target {}:{} has no non-generated sources".format(
                     target.origin_path, target.name
