@@ -1,31 +1,45 @@
-#!/usr/bin/env python
-
+# -*- coding: utf-8 -*-
 from setuptools import setup
 
-setup(
-    name="tbxtools",
-    packages=["tbxtools", "tbxtools.tbx2cmake"],
-    version="0.1.0",
-    description="Tools for introspecting and working with a tbx distribution",
-    entry_points={
-        "console_scripts": [
-            "tbx-expand-deps=tbxtools.info_tools:run_expand_dependencies",
-            # 'tbx2cmake=tbx2cmake.write_cmake:main'
-            "tbx2depfile=tbxtools.tbx2cmake.read_scons:main",
-            "tbx2cmake=tbxtools.tbx2cmake.write_cmake:main",
-        ]
-    },
-    package_dir={"": "src"},
-    install_requires=[
-        'enum34;python_version<"3"',
-        'pathlib;python_version<"3"',
-        "docopt",
-        'networkx<2.3;python_version<"3"',
-        'networkx~=2.3;python_version>"3"',
-        "pyyaml",
-        "mock;python_version<'3.3'",
-        "six",
-        "docopt",
-    ],
-    package_data={"tbxtools.tbx2cmake": ["build_info.yaml"]},
-)
+package_dir = {"": "src"}
+
+packages = ["tbxtools", "tbxtools.tbx2cmake"]
+
+package_data = {"": ["*"]}
+
+install_requires = [
+    "PyYAML>=5.4.1,<6.0.0",
+    "bowler>=0.8.0,<0.9.0",
+    "docopt>=0.6.2,<0.7.0",
+    "fissix>=19.2b1,<20.0",
+    "networkx>=2.5.1,<3.0.0",
+]
+
+entry_points = {
+    "console_scripts": [
+        "tbx-expand-deps = " "tbxtools.info_tools:run_expand_dependencies",
+        "tbx2cmake = tbxtools.tbx2cmake.write_cmake:main",
+        "tbx2depfile = tbxtools.tbx2cmake.read_scons:main",
+    ]
+}
+
+setup_kwargs = {
+    "name": "tbxtools",
+    "version": "0.1.0",
+    "description": "",
+    "long_description": None,
+    "author": "Nicholas Devenish",
+    "author_email": "ndevenish@gmail.com",
+    "maintainer": None,
+    "maintainer_email": None,
+    "url": None,
+    "package_dir": package_dir,
+    "packages": packages,
+    "package_data": package_data,
+    "install_requires": install_requires,
+    "entry_points": entry_points,
+    "python_requires": ">=3.6,<4.0",
+}
+
+
+setup(**setup_kwargs)
