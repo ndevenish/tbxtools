@@ -116,16 +116,35 @@ class SConsConfigurationContext(object):
 class SharedObject(object):
     "Represents a shared object file that is compiled once and shared"
 
-    def __init__(self, path, environment, *, target=None):
-        self.path = path
+    def __init__(self, sources, environment, *, target=None):
+        # Work out where we are... this might be referred to elsewhere
+        current_sconscript = environment.runner._current_sconscript
+        # cctbx_project is not a module root path
+        if current_sconscript.parts[0] == "cctbx_project":
+            current_sconscript = current_sconscript.relative_to(
+                current_sconscript.parts[0]
+            )
+        this_folder_name = current_sconscript.parent
+
+        if isinstance(sources, str) or hasattr(sources, "__fspath__"):
+            sources = [sources]
+        self.sources = [PurePosixPath(x) for x in sources]
         self.environment = environment
         self.target = target
+        if not target:
+            prefix = ""
+            for letters in zip(*[x.stem for x in self.sources]):
+                if len(set(letters)) == 1:
+                    prefix = prefix + letters[0]
+            self.target = f"{this_folder_name}/{prefix}".replace("/", "_")
+        elif target.endswith(".o"):
+            self.target = target[:-2].replace("/", "_").lstrip("#")
 
     def __repr__(self):
-        return "<SharedObject {}>".format(self.path)
+        return "<SharedObject {}>".format(",".join(str(x) for x in self.sources))
 
     def __iter__(self):
-        return iter([self.path])
+        return iter(self.sources)
 
 
 class SConsEnvironment(object):
