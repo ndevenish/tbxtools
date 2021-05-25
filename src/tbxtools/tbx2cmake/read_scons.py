@@ -12,7 +12,6 @@ import sys
 from pathlib import Path, PurePosixPath
 
 import networkx as nx
-import six
 import yaml
 
 from .sconsemu import SconsEmulator, Target
@@ -146,7 +145,7 @@ class TargetCollection(collections.Set):
         self.distribution = distribution
 
     def __contains__(self, target):
-        if isinstance(target, six.string_types):
+        if isinstance(target, str):
             return any(x.name == target for x in self)
         # The target must have a module to be in the distribution
         if target.module is None:
@@ -220,8 +219,8 @@ class TBXDistribution(object):
 def _build_dependency_graph(modules):
     """Builds a networkX dependency graph out of the module self-reported requirements.
 
-  :param modules: A list of modules.
-  """
+    :param modules: A list of modules.
+    """
 
     G = nx.DiGraph()
     G.add_nodes_from(x.name for x in modules)
@@ -340,8 +339,8 @@ def _deduplicate_target_names(targets):
 def read_module_path_sconscripts(module_path):
     """Parse all modules/SConscripts in a tbx module root.
 
-  Returns a TBXDistribution object.
-  """
+    Returns a TBXDistribution object.
+    """
 
     modules = {x.name: x for x in find_libtbx_modules(module_path)}
     # Make a lookup to find modules by name
@@ -389,8 +388,7 @@ def _is_cuda_target(target):
 
 
 def read_distribution(module_path):
-    """Reads a TBX distribution, filter and prepare for output conversion.
-  """
+    """Reads a TBX distribution, filter and prepare for output conversion."""
 
     tbx = read_module_path_sconscripts(module_path)
 
@@ -457,7 +455,7 @@ def read_distribution(module_path):
     for target in [x for x in tbx.targets if x.shared_sources]:
         assert len(target.shared_sources) == 1
         src = target.shared_sources[0].path
-        if isinstance(src, six.string_types):
+        if isinstance(src, str):
             src = [src]
         if src in KNOWN_IGNORABLE_SHARED:
             target.sources.extend(src)

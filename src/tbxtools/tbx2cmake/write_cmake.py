@@ -27,7 +27,6 @@ import posixpath
 import sys
 from pathlib import Path, PurePosixPath
 
-import six
 import yaml
 from docopt import docopt
 
@@ -273,12 +272,12 @@ class CMLModuleRootBlock(CMakeListBlock):
 
 def _append_list_to(line, list, join=" ", indent=4, append=("", ""), firstindent=None):
     """
-  Appends a list to a line, either inline or as separate lines depending on length.
+    Appends a list to a line, either inline or as separate lines depending on length.
 
-  :param join:   The string to join between or at the end of entries
-  :param indent: How far to indent if using separate lines
-  :param append: What to append. A tuple of (inline, split) postfixes
-  """
+    :param join:   The string to join between or at the end of entries
+    :param indent: How far to indent if using separate lines
+    :param append: What to append. A tuple of (inline, split) postfixes
+    """
     if firstindent is None:
         firstindent = " " * indent
 
@@ -319,8 +318,8 @@ class CMLLibraryOutput(CMakeListBlock):
 
     def _get_target_location_setter(self):
         """Returns the lines to set the location for the current target.
-    Passed info to format is of form (name, destination).
-    """
+        Passed info to format is of form (name, destination).
+        """
 
         # Slightly messy - but what the object classes as can be vague
         # See https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html#output-artifacts # noqa: E501
@@ -495,9 +494,7 @@ class CMLProgramOutput(CMLLibraryOutput):
 
     def _get_target_location_setter(self):
         # Executables, we always know what type they are
-        return (
-            'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'
-        )  # noqa: E501
+        return 'set_target_properties( {0:} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "{1:}")'  # noqa: E501
 
     def _get_extra_libs(self):
         extra_libs = super()._get_extra_libs()
@@ -522,16 +519,16 @@ class CMLProgramOutput(CMLLibraryOutput):
 def _expand_target_lib_list(target, liblist, values):
     """Generic autogen-reading helper function to add targets to a list(s) of targets.
 
-  If there is duplication of information then a logger debug warning will be
-  emitted.
+    If there is duplication of information then a logger debug warning will be
+    emitted.
 
-  :param target:  The target to add values to
-  :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
-  :param values:  The value(s) to add to the list(s). `str` or `[str]`
-  """
-    if isinstance(values, six.string_types):
+    :param target:  The target to add values to
+    :param liblist: The name(s) of lib lists to expand. `str` or `[str]`
+    :param values:  The value(s) to add to the list(s). `str` or `[str]`
+    """
+    if isinstance(values, str):
         values = [values]
-    if isinstance(liblist, six.string_types):
+    if isinstance(liblist, str):
         liblist = [liblist]
     logger.debug(
         "Adding {} to {}'s [{}]".format(values, target.name, ", ".join(liblist))
@@ -647,9 +644,7 @@ def _read_autogen_information(filename, tbx):
         # If name is "all", then just expand the global list
         if name == "all":
             global OPTIONAL_DEPENDS
-            OPTIONAL_DEPENDS |= (
-                set(deps) if not isinstance(deps, six.string_types) else set([deps])
-            )
+            OPTIONAL_DEPENDS |= set(deps) if not isinstance(deps, str) else set([deps])
             logger.debug(
                 "Expanding global optional dependency list with: {}".format(deps)
             )
@@ -662,9 +657,7 @@ def _read_autogen_information(filename, tbx):
     for name, deps in data.get("required_optional_external", {}).items():
         if name == "all":
             global REQUIRED_OPTIONAL
-            REQUIRED_OPTIONAL |= (
-                set(deps) if not isinstance(deps, six.string_types) else set([deps])
-            )
+            REQUIRED_OPTIONAL |= set(deps) if not isinstance(deps, str) else set([deps])
             logger.debug(
                 "Expanding global required optional dependency list with: {}".format(
                     deps
@@ -688,7 +681,7 @@ def _read_autogen_information(filename, tbx):
 
     # Handle adding of include paths to specific targets/modules
     for name, incs in data.get("target_includes", {}).items():
-        if isinstance(incs, six.string_types):
+        if isinstance(incs, str):
             incs = [incs]
 
         inc_target = None

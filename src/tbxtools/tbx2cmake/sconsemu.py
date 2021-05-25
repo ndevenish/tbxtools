@@ -11,8 +11,6 @@ import traceback
 from enum import Enum
 from pathlib import PosixPath, PurePosixPath, WindowsPath
 
-import six
-
 from .import_env import MissingDistError, do_import_patching
 from .intercept import SystemEnvInterceptor, no_intercept_os
 from .utils import InjectableModule
@@ -25,9 +23,9 @@ logger = logging.getLogger(__name__)
 class ProgramReturn(object):
     """Thin shim to represent the return from a Program builder.
 
-  AFAICT this is only used once in the SConscripts, to find out the
-  location of a target that has just been built, so doesn't need to be
-  any more complicated than this."""
+    AFAICT this is only used once in the SConscripts, to find out the
+    location of a target that has just been built, so doesn't need to be
+    any more complicated than this."""
 
     def __init__(self, path):
         self.path = path
@@ -39,11 +37,11 @@ class ProgramReturn(object):
 class SConsConfigurationContext(object):
     """Represents the object returned by a Scons Environment's 'Configure'.
 
-  This is used to run tests inside a configured environment to e.g. test if
-  sample programs will compile and run with the environment configured in a
-  certain way. Here we just short-circuit the answers by working out what parts
-  of the code is doing the testing.
-  """
+    This is used to run tests inside a configured environment to e.g. test if
+    sample programs will compile and run with the environment configured in a
+    certain way. Here we just short-circuit the answers by working out what parts
+    of the code is doing the testing.
+    """
 
     def __init__(self, env):
         self.env = env
@@ -118,9 +116,10 @@ class SConsConfigurationContext(object):
 class SharedObject(object):
     "Represents a shared object file that is compiled once and shared"
 
-    def __init__(self, path, environment):
+    def __init__(self, path, environment, *, target=None):
         self.path = path
         self.environment = environment
+        self.target = target
 
     def __repr__(self):
         return "<SharedObject {}>".format(self.path)
@@ -132,9 +131,9 @@ class SharedObject(object):
 class SConsEnvironment(object):
     """Represents an object created by the scons Environment() call.
 
-  Needs to be constructed separately so that it can be tracked by the
-  SCons-emulation environment.
-  """
+    Needs to be constructed separately so that it can be tracked by the
+    SCons-emulation environment.
+    """
 
     _DEFAULT_KWARGS = {
         "OBJSUFFIX": ".o",
@@ -167,7 +166,7 @@ class SConsEnvironment(object):
 
     def Append(self, **kwargs):
         for key, val in kwargs.items():
-            if isinstance(val, six.string_types):
+            if isinstance(val, str):
                 val = [val]
             if key not in self.kwargs:
                 self.kwargs[key] = []
@@ -176,7 +175,7 @@ class SConsEnvironment(object):
 
     def Prepend(self, **kwargs):
         for key, val in kwargs.items():
-            if isinstance(val, six.string_types):
+            if isinstance(val, str):
                 val = [val]
             if key not in self.kwargs:
                 self.kwargs[key] = []
@@ -226,7 +225,7 @@ class SConsEnvironment(object):
 
     def _create_target(self, targettype, target, source, **kwargs):
         """Gathers target information from the environment when created"""
-        if isinstance(source, six.string_types):
+        if isinstance(source, str):
             source = [source]
         if target.startswith("#lib"):
             target = "#/lib" + target[4:]
@@ -240,7 +239,7 @@ class SConsEnvironment(object):
         # Massage lib list to flatten any odd sublists etc
         libs = set()
         for lib in target.env["LIBS"]:
-            if isinstance(lib, six.string_types):
+            if isinstance(lib, str):
                 libs.add(lib)
             elif isinstance(lib, list):
                 libs |= set(lib)
@@ -308,9 +307,9 @@ class SConsEnvironment(object):
         return self._create_target(Target.Type.CUDALIB, target, source)
         # print("CUDA program: {}, {}".format(target, source))
 
-    def SharedObject(self, source):
+    def SharedObject(self, source, *, target=None):
         logger.debug("Shared object: {}".format(source))
-        return SharedObject(source, self)
+        return SharedObject(source, self, target=target)
 
 
 class Target(object):
