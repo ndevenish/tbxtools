@@ -67,7 +67,7 @@ class libtbxBuildOptions(object):
     use_environment_flags = False
     enable_cxx11 = False
     enable_openmp_if_possible = True
-    enable_cuda = True
+    enable_cuda = False
     enable_boost_threads = True
     boost_python_no_py_signatures = False
     precompile_headers = False
