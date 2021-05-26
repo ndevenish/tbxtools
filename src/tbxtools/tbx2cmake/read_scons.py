@@ -450,30 +450,6 @@ def read_distribution(module_path):
         ):
             target.type = Target.Type.MODULE
 
-    # Make sure that all instances of shared source objects are known about
-    # and collapse them down to unshared sources.
-    KNOWN_IGNORABLE_SHARED = [
-        # ["numpy_bridge.cpp"],
-        # ["lbfgs_fem.cpp"],
-        # ["boost_python/outlier_helpers.cc"],
-        # ["nanoBragg_ext.cpp", "nanoBragg.cpp", "nanoBragg_nks.cpp"],
-        # ["gpu_ext.cpp"],
-    ]
-    for target in [x for x in tbx.targets if x.shared_sources]:
-        assert len(target.shared_sources) == 1
-        src = [str(x) for x in target.shared_sources[0].sources]
-        if isinstance(src, str):
-            src = [src]
-        if src in KNOWN_IGNORABLE_SHARED:
-            target.sources.extend(src)
-            target.shared_sources = []
-        else:
-            logger.warn(
-                "Source {} in target {} not a recognised shared source".format(
-                    src, repr(target)
-                )
-            )
-
     # Check assumptions about all the targets
     assert all(x.module for x in tbx.targets), "Not all targets belong to a module"
     assert all(x.prefix == "lib" for x in tbx.targets if x.type == Target.Type.SHARED)
