@@ -343,6 +343,12 @@ class CMLLibraryOutput(CMakeListBlock):
             extra_libs = extra_libs - {"boost_python"}
         else:
             extra_libs |= {"boost"}
+
+        if self.target.shared_sources:
+            extra_libs = extra_libs | {
+                x.target.name for x in self.target.shared_sources
+            }
+
         return extra_libs
 
     def __str__(self):
