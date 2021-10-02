@@ -221,21 +221,6 @@ def update_git_repo(path: Path, update, error_comms):
     # If we updated, but not on the current branch - we want to flag this
     warning = False
 
-    # Have observed this git call sometimes fails for no apparent
-    # reason when repository is clean. Have never observed a false
-    # negative. This is a horrible way around the problem.
-    dirty = True
-    for i in range(10):
-        try:
-            git.check_call(["diff", "--no-ext-diff", "--quiet"])
-            dirty = False
-            if i > 0:
-                print("\n" * 10 + "Got differing results for no-ext-diff" + "\n" * 10)
-            break
-        except BaseException:
-            # Might be a false positive
-            pass
-
     # If not on main branch, then try to update it in the background
     if not git.get_current_branch() == main:
         update(f"{main} not actively checked out branch. Updating background pointer")
@@ -246,8 +231,7 @@ def update_git_repo(path: Path, update, error_comms):
         success_message = f"Updated non-checked-out branch {main} {{0}}...{{1}}."
         nochange_message = f"Non-checked-out branch {main} already up to date."
         warning = True
-    elif dirty:
-        # not git.call(["diff", "--no-ext-diff", "--quiet"]):
+    elif not git.call(["diff", "--no-ext-diff", "--quiet"]):
         # We have a dirty working area. Let's stash this and try anyway
         update("Working directory is dirty: Creating stash to preserve state")
         stash = git.check_output(["stash", "create"])
