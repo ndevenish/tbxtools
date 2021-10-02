@@ -359,10 +359,16 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                         )
                     exception = fut.exception()
                     if exception:
-                        status = status._replace(
-                            status=f"{type(exception).__name__}: {exception}",
-                            error=True,
-                        )
+                        try:
+                            status = status._replace(
+                                status=f"{type(exception).__name__}: {exception}",
+                                error=True,
+                            )
+                        except TypeError:
+                            status = status._replace(
+                                status=f"Typeerror expanding {exception=} {type(exception)}",
+                                error=True,
+                            )
                     task_status[path] = status
 
             for path in to_remove:
