@@ -15,6 +15,7 @@ from typing import Dict, List, NamedTuple
 R = "\033[31m"
 G = "\033[32m"
 B = "\033[34m"
+Y = "\033[33m"
 NC = "\033[0m"
 BOLD = "\033[1m"
 UP_AND_CLEAR = "\033[F\033[2K"
@@ -26,6 +27,7 @@ class TaskUpdate(NamedTuple):
     path: Path
     running: bool
     error: bool
+    warning: bool
     status: str
 
 
@@ -207,6 +209,9 @@ def update_git_repo(path: Path, update, error_comms):
     success_message = "Updated {0}...{1}."
     nochange_message = "Already up to date."
 
+    # If we updated, but not on the current branch - we want to flag this
+    warning = False
+
     # If not on main branch, then try to update it in the background
     if not git.get_current_branch() == main:
         update(f"{main} not actively checked out branch. Updating background pointer")
@@ -216,7 +221,7 @@ def update_git_repo(path: Path, update, error_comms):
             return
         success_message = f"Updated non-checked-out branch {main} {{0}}...{{1}}."
         nochange_message = f"Non-checked-out branch {main} already up to date."
-    elif not git.call(["diff", "--no-ext-diff", "--quiet"]):
+        warning = True
         # We have a dirty working area. Let's stash this and try anyway
         update("Working directory is dirty: Creating stash to preserve state")
         stash = git.check_output(["stash", "create"])
@@ -245,9 +250,11 @@ def update_git_repo(path: Path, update, error_comms):
     # Decide which message to send - did we actually make a change?
     new_commit = git.rev_parse(main)
     if original_commit == new_commit:
-        update(nochange_message)
+        update(nochange_message, warning=warning)
     else:
-        update(success_message.format(original_commit[:6], new_commit[:6]))
+        update(
+            success_message.format(original_commit[:6], new_commit[:6]), warning=warning
+        )
 
 
 def update_repo(update_function, path, communicator, error_comms):
@@ -262,12 +269,12 @@ def update_repo(update_function, path, communicator, error_comms):
         raise
 
 
-def _update_comms_queue(comms, path, *args, running=None, error=None):
+def _update_comms_queue(comms, path, *args, running=None, error=None, warning=None):
     """Convenience function for sending an update"""
     message = " ".join(str(x) for x in args).rstrip().splitlines()
     if message:
         message = message[-1]
-    comms.put(TaskUpdate(path, running, error, message))
+    comms.put(TaskUpdate(path, running, error, warning, message))
 
 
 def find_all_repos(path: Path) -> List[Task]:
@@ -296,10 +303,16 @@ error_comms = Queue()
 highest_task = 0
 task_status = {}
 with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
-    try:
+    # Try block to ensure everything exits
+    try:  # noqa: C901
         # Submit all tasks at once
         print(f"Running update for {len(tasks)} repositories:")
         for kind, path in tasks:
+            if kind not in updaters:
+                task_status[path] = TaskUpdate(
+                    path, False, True, False, "Cannot update SVN repos"
+                )
+                continue
             active_tasks[path] = pool.submit(
                 update_repo,
                 updaters[kind],
@@ -307,7 +320,7 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                 functools.partial(_update_comms_queue, task_comms, path),
                 error_comms,
             )
-            task_status[path] = TaskUpdate(path, True, False, "")
+            task_status[path] = TaskUpdate(path, True, False, False, "")
 
         # Pre-print as many as we can fit on the screen without going over
         _, tlines = os.get_terminal_size()
@@ -379,6 +392,9 @@ with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
                     colour = B
                 elif status.error:
                     linecolour = R
+                    colour = ""
+                elif status.warning:
+                    linecolour = Y
                     colour = ""
                 else:
                     linecolour = G
