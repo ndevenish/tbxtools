@@ -124,14 +124,8 @@ class Git(object):
                     self.updater(line)
 
         self.last_output = "".join(lines)
-        # Finished output, wait for the process to finish
-        # communicate() appears to be required instead of poll() - poll
-        # sometimes gave a nonzero return code to an otherwise successful
-        # process, so assuming some race condition.
-        (o, e) = process.communicate()
-        assert not o and not e, "All output should be captured already"
 
-        if process.returncode != 0:
+        if process.wait() != 0:
             raise CalledProcessError(process.returncode, cmd)
 
     def call(self, *args, **kwargs):
