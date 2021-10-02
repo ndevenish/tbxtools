@@ -21,7 +21,7 @@ NC = "\033[0m"
 BOLD = "\033[1m"
 UP_AND_CLEAR = "\033[F\033[2K"
 
-MAX_CONCURRENT = 5
+MAX_CONCURRENT = 10
 
 
 class TaskUpdate(NamedTuple):
