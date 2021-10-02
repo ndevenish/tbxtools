@@ -5,6 +5,7 @@ import sys
 import textwrap
 import time
 import traceback
+from argparse import ArgumentParser
 from concurrent.futures import Future, ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
@@ -298,142 +299,158 @@ def find_all_repos(path: Path) -> List[Task]:
     return sorted(repos)
 
 
-updaters = {"git": update_git_repo}
-tasks = find_all_repos(Path.cwd())
-paths = [t.path for t in tasks]
+if __name__ == "__main__":  # noqa: C901
 
-task_name_width = max(len(p.path.name) for p in tasks)
+    parser = ArgumentParser(
+        description="Update all repositories in an immediate subdirectory"
+    )
+    parser.add_argument(
+        "-n",
+        help="Number of concurrent updates. Defaults to %(default)s",
+        default=MAX_CONCURRENT,
+        type=int,
+    )
+    options = parser.parse_args()
+    MAX_CONCURRENT = options.n
 
-active_tasks: Dict[Path, Future] = {}
-task_comms: "Queue[TaskUpdate]" = Queue()
-# Feedback channel for errors. Any log output will be sent here
-error_comms = Queue()
+    updaters = {"git": update_git_repo}
+    tasks = find_all_repos(Path.cwd())
+    paths = [t.path for t in tasks]
 
-# Keep track of how many active tasks we had last time
-highest_task = 0
-task_status = {}
-with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
-    # Try block to ensure everything exits
-    try:  # noqa: C901
-        # Submit all tasks at once
-        print(f"Running update for {len(tasks)} repositories:")
-        for kind, path in tasks:
-            if kind not in updaters:
-                task_status[path] = TaskUpdate(
-                    path, False, True, False, "Cannot update SVN repos"
+    task_name_width = max(len(p.path.name) for p in tasks)
+
+    active_tasks: Dict[Path, Future] = {}
+    task_comms: "Queue[TaskUpdate]" = Queue()
+    # Feedback channel for errors. Any log output will be sent here
+    error_comms = Queue()
+
+    # Keep track of how many active tasks we had last time
+    highest_task = 0
+    task_status = {}
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as pool:
+        # Try block to ensure everything exits
+        try:  # noqa: C901
+            # Submit all tasks at once
+            print(f"Running update for {len(tasks)} repositories:")
+            for kind, path in tasks:
+                if kind not in updaters:
+                    task_status[path] = TaskUpdate(
+                        path, False, True, False, "Cannot update SVN repos"
+                    )
+                    continue
+                active_tasks[path] = pool.submit(
+                    update_repo,
+                    updaters[kind],
+                    path,
+                    functools.partial(_update_comms_queue, task_comms, path),
+                    error_comms,
                 )
-                continue
-            active_tasks[path] = pool.submit(
-                update_repo,
-                updaters[kind],
-                path,
-                functools.partial(_update_comms_queue, task_comms, path),
-                error_comms,
-            )
-            task_status[path] = TaskUpdate(path, True, False, False, "")
+                task_status[path] = TaskUpdate(path, True, False, False, "")
 
-        # Pre-print as many as we can fit on the screen without going over
-        _, tlines = os.get_terminal_size()
-        highest_task = min(len(tasks) - 1, tlines - 3)
-        print("\n".join([f"    {path.name}:" for _, path in tasks]))
+            # Pre-print as many as we can fit on the screen without going over
+            _, tlines = os.get_terminal_size()
+            highest_task = min(len(tasks) - 1, tlines - 3)
+            print("\n".join([f"    {path.name}:" for _, path in tasks]))
 
-        while active_tasks:
-            time.sleep(0.1)
-            # Start this with a value outside the highest task, so we know nothing updated
-            earliest_task_updated = highest_task + 1
-            # Pull down all the update messages
-            while not task_comms.empty():
-                update = task_comms.get()
-                # Keep track of the earliest task so we can update efficiently
-                earliest_task_updated = min(
-                    earliest_task_updated, paths.index(update.path)
-                )
-                # If no error/running field was specified - use the existing
-                if update.error is None:
-                    update = update._replace(error=task_status[update.path].error)
-                if update.running is None:
-                    update = update._replace(running=task_status[update.path].running)
-                task_status[update.path] = update
-
-            # Check to see if the future ended (maybe we got no message yet?)
-            # - if it did finish, then update if necessary
-            to_remove = []
-            for path, fut in active_tasks.items():
-                status = task_status[path]
-                if fut.done():
-                    to_remove.append(path)
-                    if status.running:
-                        status = status._replace(running=False)
-                        earliest_task_updated = min(
-                            earliest_task_updated, paths.index(status.path)
+            while active_tasks:
+                time.sleep(0.1)
+                # Start this with a value outside the highest task, so we know nothing updated
+                earliest_task_updated = highest_task + 1
+                # Pull down all the update messages
+                while not task_comms.empty():
+                    update = task_comms.get()
+                    # Keep track of the earliest task so we can update efficiently
+                    earliest_task_updated = min(
+                        earliest_task_updated, paths.index(update.path)
+                    )
+                    # If no error/running field was specified - use the existing
+                    if update.error is None:
+                        update = update._replace(error=task_status[update.path].error)
+                    if update.running is None:
+                        update = update._replace(
+                            running=task_status[update.path].running
                         )
-                    exception = fut.exception()
-                    if exception:
-                        try:
-                            status = status._replace(
-                                status=f"{type(exception).__name__}: {exception}",
-                                error=True,
+                    task_status[update.path] = update
+
+                # Check to see if the future ended (maybe we got no message yet?)
+                # - if it did finish, then update if necessary
+                to_remove = []
+                for path, fut in active_tasks.items():
+                    status = task_status[path]
+                    if fut.done():
+                        to_remove.append(path)
+                        if status.running:
+                            status = status._replace(running=False)
+                            earliest_task_updated = min(
+                                earliest_task_updated, paths.index(status.path)
                             )
-                        except TypeError:
-                            status = status._replace(
-                                status=f"Typeerror expanding {exception=} {type(exception)}",
-                                error=True,
-                            )
-                    task_status[path] = status
+                        exception = fut.exception()
+                        if exception:
+                            try:
+                                status = status._replace(
+                                    status=f"{type(exception).__name__}: {exception}",
+                                    error=True,
+                                )
+                            except TypeError:
+                                status = status._replace(
+                                    status=f"Typeerror expanding {exception=} {type(exception)}",
+                                    error=True,
+                                )
+                        task_status[path] = status
 
-            for path in to_remove:
-                del active_tasks[path]
+                for path in to_remove:
+                    del active_tasks[path]
 
-            # If we didn't update anything, go back to sleeping
-            if earliest_task_updated > highest_task:
-                continue
-            # Now, work out how far we need to rewind to redraw the table
-            update_message = StringIO()
+                # If we didn't update anything, go back to sleeping
+                if earliest_task_updated > highest_task:
+                    continue
+                # Now, work out how far we need to rewind to redraw the table
+                update_message = StringIO()
 
-            # We are on highest_task+1 line
-            rewind_by = highest_task - earliest_task_updated + 1
-            update_message.write(UP_AND_CLEAR * rewind_by)
+                # We are on highest_task+1 line
+                rewind_by = highest_task - earliest_task_updated + 1
+                update_message.write(UP_AND_CLEAR * rewind_by)
 
-            # Now, rewrite all of the status messages
-            for path in paths[earliest_task_updated:]:
-                # if path in active_tasks and not (
-                #     active_tasks[path].running() or active_tasks[path].done()
-                # ):
-                #     continue
-                task_index = paths.index(path)
-                highest_task = max(highest_task, task_index)
-                status = task_status[path]
-                if status.running:
-                    linecolour = ""
-                    colour = B
-                elif status.error:
-                    linecolour = R
-                    colour = ""
-                elif status.warning:
-                    linecolour = Y
-                    colour = ""
-                else:
-                    linecolour = G
-                    colour = ""
-                update_message.write(
-                    f"{linecolour}    {path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
-                )
-            print(update_message.getvalue(), flush=True, end="")
+                # Now, rewrite all of the status messages
+                for path in paths[earliest_task_updated:]:
+                    # if path in active_tasks and not (
+                    #     active_tasks[path].running() or active_tasks[path].done()
+                    # ):
+                    #     continue
+                    task_index = paths.index(path)
+                    highest_task = max(highest_task, task_index)
+                    status = task_status[path]
+                    if status.running:
+                        linecolour = ""
+                        colour = B
+                    elif status.error:
+                        linecolour = R
+                        colour = ""
+                    elif status.warning:
+                        linecolour = Y
+                        colour = ""
+                    else:
+                        linecolour = G
+                        colour = ""
+                    update_message.write(
+                        f"{linecolour}    {path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
+                    )
+                print(update_message.getvalue(), flush=True, end="")
 
-        # Now, handle printing any error logs - print in sort order
-        errors = {}
-        while not error_comms.empty():
-            error = error_comms.get()
-            errors[error.path] = error.message
+            # Now, handle printing any error logs - print in sort order
+            errors = {}
+            while not error_comms.empty():
+                error = error_comms.get()
+                errors[error.path] = error.message
 
-        for path in sorted(errors.keys()):
-            print(f"{BOLD}{R}Error: Could not update {path}:{NC}{R}")
-            print(textwrap.indent(errors[path], "    ") + NC)
+            for path in sorted(errors.keys()):
+                print(f"{BOLD}{R}Error: Could not update {path}:{NC}{R}")
+                print(textwrap.indent(errors[path], "    ") + NC)
 
-        if errors:
-            sys.exit(1)
-    except KeyboardInterrupt:
-        # Make sure that our threads all shut down
-        EXIT_THREADS = True
-    finally:
-        EXIT_THREADS = True
+            if errors:
+                sys.exit(1)
+        except KeyboardInterrupt:
+            # Make sure that our threads all shut down
+            EXIT_THREADS = True
+        finally:
+            EXIT_THREADS = True
