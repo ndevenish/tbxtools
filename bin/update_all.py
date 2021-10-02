@@ -124,9 +124,14 @@ class Git(object):
 
         self.last_output = "".join(lines)
         # Finished output, wait for the process to finish
-        code = process.poll()
-        if code != 0:
-            raise CalledProcessError(code, cmd)
+        # communicate() appears to be required instead of poll() - poll
+        # sometimes gave a nonzero return code to an otherwise successful
+        # process, so assuming some race condition.
+        (o, e) = process.communicate()
+        assert not o and not e, "All output should be captured already"
+
+        if process.returncode != 0:
+            raise CalledProcessError(process.returncode, cmd)
 
     def call(self, *args, **kwargs):
         """Run check_call, but explicitly for the return value"""
@@ -141,9 +146,13 @@ class Git(object):
         return self.check_output(["rev-parse", "--abbrev-ref", "HEAD"])
 
     def get_main_branch(self):
-        if self.call(["show-ref", "-q", "--verify", "refs/remotes/origin/main"]):
+        # We have to check local branches, because we might not have a master or main checked out
+        if self.call(["show-ref", "-q", "--verify", "refs/heads/main"]):
             return "main"
-        return "master"
+        if self.call(["show-ref", "-q", "--verify", "refs/heads/master"]):
+            return "master"
+
+        raise RuntimeError("Could not determine whether master or main was present")
 
     def get_upstream_branch(self, branch):
         upstream = self.check_output(
