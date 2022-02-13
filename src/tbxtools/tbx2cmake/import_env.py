@@ -104,6 +104,10 @@ class libtbxEnv(object):
                     # import pdb
                     # pdb.set_trace()
                     return path
+        # Some parts now ask for modules that aren't included by default, we need to handle these.
+        known_missing = "LatticeRepLib"
+        if module in known_missing:
+            return None
         # With no_intercept_os we can now fall through to this. But we should
         # never be asked for the path of a module that doesn't exist - if we
         # do, we should probably return something but this is a relatively

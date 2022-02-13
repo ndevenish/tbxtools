@@ -267,8 +267,8 @@ def _build_dependency_graph(modules):
     while not nx.is_directed_acyclic_graph(G):
         cycle = nx.cycles.find_cycle(G)
         logger.debug(
-            u"Cycle found in dependency graph: {}".format(
-                u" → ".join(x[0] for x in cycle)
+            "Cycle found in dependency graph: {}".format(
+                " → ".join(x[0] for x in cycle)
             )
         )
 
@@ -510,11 +510,16 @@ def read_distribution(module_path):
         "boost_filesystem",
         "dl",
     }
-    assert (
-        not external_libs - expected_external_libs
-    ), "Unexpected extra external libs: {}".format(
-        external_libs - expected_external_libs
-    )
+    if unexpected_external := external_libs - expected_external_libs:
+        # Let's work out where these came from for a better error message
+        for lib in unexpected_external:
+            from_targets = [x.name for x in tbx.targets if lib in x.extra_libs]
+            logger.error(
+                "Got unexpected extra lib: %s from: %s", lib, ", ".join(from_targets)
+            )
+        raise RuntimeError(
+            f"Unexpected extra external libs: {', '.join(unexpected_external)}"
+        )
 
     return tbx
 
