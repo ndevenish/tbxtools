@@ -1,5 +1,5 @@
 # coding: utf-8
-
+from __future__ import annotations
 
 import copy
 import inspect
@@ -10,7 +10,6 @@ import sys
 import traceback
 from enum import Enum
 from pathlib import PosixPath, PurePosixPath, WindowsPath
-from typing import Union
 
 from .import_env import MissingDistError, do_import_patching
 from .intercept import SystemEnvInterceptor, no_intercept_os
@@ -250,11 +249,15 @@ class SConsEnvironment(object):
         self.runner.sconscript_command(name, exports)
 
     def _create_target(
-        self, targettype, target: Union[PurePosixPath, str], source, **kwargs
+        self, targettype, target: PurePosixPath | str | list[str], source, **kwargs
     ):
         """Gathers target information from the environment when created"""
         if isinstance(source, str):
             source = [source]
+        if isinstance(target, list):
+            # mmtbx has added list targets
+            assert len(target) == 1
+            target = target[0]
         target = PurePosixPath(target)
         if target.parts[0].startswith("#lib"):
             target = PurePosixPath("#", "lib", target.parts[0][4:], *target.parts[1:])
@@ -577,7 +580,9 @@ class SconsEmulator(object):
         def _env_export(*args):
             logger.debug("Exporting {}".format(args))
             for name in args:
-                self._exports[name] = module.getvar(name)
+                # Some places (nanobragg) use 'Export("envA envB")'
+                for fragment in name.split(" "):
+                    self._exports[fragment] = module.getvar(fragment)
 
         def _env_import(*args):
             logger.debug("Importing {}".format(args))

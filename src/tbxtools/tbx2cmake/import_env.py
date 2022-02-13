@@ -77,6 +77,7 @@ class libtbxBuildOptions(object):
     mode = "invalid"  # AFAICT this is only tested as mode == "profile" (linux only)
     static_libraries = False
     use_conda = False
+    enable_kokkos = False
 
 
 class libtbxEnv(object):
