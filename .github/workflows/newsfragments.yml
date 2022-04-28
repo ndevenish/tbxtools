@@ -1,0 +1,55 @@
+name: Newsfragments
+
+on:
+  pull_request:
+    branches-ignore:
+      - 'dials-?.*'
+
+jobs:
+  rename-news:
+    name: Newsfragment Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Added a newsfragment
+        run: |
+          set -x
+          git fetch --unshallow
+          git log HEAD -n 1
+          # echo "_$(git diff ${{ github.event.pull_request.base.sha }} --name-only -- newsfragments/)_"
+          treediff="$(git diff-tree  HEAD ${{ github.event.pull_request.base.sha }} -- newsfragments/)"
+          echo "_${treediff}_"
+          if [[ -z "${treediff}" ]]; then
+            echo "::error ::PR Branch is missing a newsfragment. Please add one with a number or named XXX.<type>."
+            exit 1
+          else
+            echo "✅  Newsfragment entry present"
+            find .
+          fi
+      - name: Rename placeholder newsfragments
+        run: |
+          # set -x
+          if ls newsfragments/XXX.* 1> /dev/null 2>&1; then
+            git config user.name "GitHub"
+            git config user.email "noreply@github.com"
+            HEAD_REPO="${{github.event.pull_request.head.repo.full_name}}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+            git remote add fork https://x-access-token:${GITHUB_TOKEN}@github.com/$HEAD_REPO.git
+            # git fetch fork
+            # # Rewind this to the head of the PR instead of the post-PR merge point
+            # git checkout -b _rename_news fork/${HEAD_BRANCH}
+
+            for fragment in newsfragments/XXX.*; do
+              target_file="$(echo "${fragment}" | sed "s/XXX/${{github.event.number}}/")"
+              git mv $fragment $target_file
+              git add $target_file
+            done
+            git commit -m "Rename XXX.* newsfragments to PR number"
+            git push fork HEAD:"${HEAD_BRANCH}"
+          else
+            echo "No Newsfragments need to be renamed."
+          fi
