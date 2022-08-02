@@ -310,15 +310,22 @@ def main(argv=None):
     parser.add_argument(
         "--logger",
         metavar="NAME",
-        nargs=1,
         default="logger",
         help="The conventional name for loggers",
     )
     args = parser.parse_args(argv)
 
+    # Logger might be a lookup pattern. Split it.
+    logger_pattern = f"'{args.logger}'"
+    if "." in args.logger:
+        parts = args.logger.split(".")
+        logger_pattern = f"'{parts[0]}' " + " ".join(
+            f"trailer < '.' '{x}' >" for x in parts[1:]
+        )
+
     PERCENT_PATTERN = f"""
     power <
-        '{args.logger}'
+        {logger_pattern}
         trailer
         call=trailer <
             '(' term < formatstr=any '%' vars=any > ')'
@@ -326,7 +333,7 @@ def main(argv=None):
     >"""
     FORMAT_PATTERN = f"""
     power <
-        '{args.logger}'
+        {logger_pattern}
         trailer
         call=trailer <
             '(' formatblock=any <

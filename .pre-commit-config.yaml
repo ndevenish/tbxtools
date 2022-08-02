@@ -20,7 +20,7 @@ repos:
     -   id: debug-statements
         language_version: python3
     # -   id: ...
--   repo: git://github.com/detailyang/pre-commit-shell
+-   repo: https://github.com/detailyang/pre-commit-shell
     rev: 1.0.5
     hooks:
     - id: shell-lint
