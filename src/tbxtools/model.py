@@ -5,8 +5,8 @@ Contains the model objects for a tbx-like distribution
 """
 
 import ast
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +17,18 @@ class DependencyError(RuntimeError):
 
 class Module(object):
     """
-  Represents a module in a tbx-like distribution.
+    Represents a module in a tbx-like distribution.
 
-  A module is literally a folder, but can contain optional configuration
-  files. Thus, the only way to classify a module is by request - it it's
-  requested as a module, and exists as a folder, it is one.
-  """
+    A module is literally a folder, but can contain optional configuration
+    files. Thus, the only way to classify a module is by request - it it's
+    requested as a module, and exists as a folder, it is one.
+    """
 
     def __init__(self, path, dist):
         """
-    :param path: The path to the module, relative to distribution root
-    :param dist:      The distribution this module belongs to
-    """
+        :param path: The path to the module, relative to distribution root
+        :param dist:      The distribution this module belongs to
+        """
         self.name = os.path.basename(path)
         self.path = path
         self.dist = dist
@@ -161,9 +161,9 @@ class Distribution(object):
     def load_module(self, name):
         """Search the distribution module paths for a module, and load it.
 
-    :param str name:  The name of the module to retrieve
-    :returns:         A Module object if found, or None
-    """
+        :param str name:  The name of the module to retrieve
+        :returns:         A Module object if found, or None
+        """
         # If we've already loaded this module, just return it
         if name in self._modules:
             return self._modules[name]

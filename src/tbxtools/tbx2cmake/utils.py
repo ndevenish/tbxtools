@@ -1,8 +1,8 @@
 # coding: utf-8
 
-import os
-import imp
 import contextlib
+import imp
+import os
 
 
 class AttrDict(dict):
@@ -37,15 +37,15 @@ def fully_split_path(path):
 
 class InjectableModule(object):
     """Load and run a python script with an injected globals dictionary.
-  This is to emulate what it appears libtbx/scons does to run refresh scripts.
-  Allows injecting whilst the module is running e.g. via callbacks.
-  """
+    This is to emulate what it appears libtbx/scons does to run refresh scripts.
+    Allows injecting whilst the module is running e.g. via callbacks.
+    """
 
     def __init__(self, module_path):
         """Create an InjectableModule.
 
-    :param pathlib.Path module_path: The python script to load
-    """
+        :param pathlib.Path module_path: The python script to load
+        """
         module = imp.new_module(module_path.stem)
         module.__file__ = str(module_path.parent)
         with module_path.open() as f:
@@ -65,7 +65,7 @@ class InjectableModule(object):
 
 @contextlib.contextmanager
 def monkeypatched(object, name, patch):
-    """ Temporarily monkeypatches an object. """
+    """Temporarily monkeypatches an object."""
     pre_patched_value = getattr(object, name)
     setattr(object, name, patch)
     yield object

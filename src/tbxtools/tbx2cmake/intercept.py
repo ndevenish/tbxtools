@@ -1,5 +1,5 @@
-from collections import defaultdict
 import contextlib
+from collections import defaultdict
 
 
 @contextlib.contextmanager

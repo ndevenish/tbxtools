@@ -4,22 +4,16 @@ Find all extension imports and (eventually) rewrite them
 """
 
 import argparse
+import pprint
+from pathlib import Path
 from typing import List, Optional
 
-import fissix.pgen2
-import fissix.pygram
-import fissix.pytree
-import pytest
 from bowler import Query
 from bowler.types import LN, Capture, Filename
 from fissix.fixer_util import Comma
 from fissix.pgen2 import token
 from fissix.pygram import python_symbols
 from fissix.pytree import Leaf, Node, type_repr
-
-from pathlib import Path
-
-from pprint import pprint
 
 PATTERN = """import_name | import_from"""
 
@@ -383,7 +377,7 @@ def main():
         .execute(interactive=False, write=args.do, silent=args.silent)
     )
     with open("libs.list", "w") as f:
-        f.write(pformat(LIB_USES))
+        f.write(pprint.pformat(LIB_USES))
     print("Wrote results to libs.list")
 
 

@@ -2,9 +2,10 @@
 
 import logging
 import os
+
 import pytest
 
-from tbxtools import Distribution, DependencyError
+from tbxtools import DependencyError, Distribution
 
 logging.basicConfig(level=logging.INFO)
 test_dist = os.path.join(os.path.dirname(__file__), "fake_distribution")
