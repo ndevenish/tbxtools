@@ -20,10 +20,17 @@ isort = "^5.10.1"
 requires = ["poetry_core>=1.0", "setuptools"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.isort]
-profile="black"
-
 [tool.poetry.scripts]
 tbx-expand-deps = "tbxtools.info_tools:run_expand_dependencies"
 tbx2depfile = "tbxtools.tbx2cmake.read_scons:main"
 tbx2cmake = "tbxtools.tbx2cmake.write_cmake:main"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C4", "I"]
+unfixable = ["F841"]
+# E501 line too long (handled by formatter)
+# E741 Ambiguous variable name (We have lots of meaningful I, L, l)
+ignore = ["E501", "E741"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
