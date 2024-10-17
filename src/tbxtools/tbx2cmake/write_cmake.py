@@ -37,12 +37,6 @@ from .read_scons import TBXDistribution, read_distribution
 from .sconsemu import Target
 from .utils import fully_split_path
 
-try:
-    from typing import Set
-except ImportError:
-    pass
-
-
 logger = logging.getLogger()
 
 # Renames from Scons-library targets to CMake names
@@ -72,14 +66,14 @@ DEPENDENCY_RENAMES = {
 # external dependency listed for these, the target will be always added
 # and then an extra test added for linking in these. Filled from the
 # build_info.yaml:optional_dependencies.all field.
-OPTIONAL_DEPENDS = set()  # type: Set[str]
+OPTIONAL_DEPENDS: set[str] = set()
 
 # Global required optionals - dependencies that are optional globally,
 # but any specific target that requests it must be skipped if this
 # dependency is missing.
-REQUIRED_OPTIONAL = set()  # type: Set[str]
+REQUIRED_OPTIONAL: set[str] = set()
 
-_warned_types = set()  # type: Set[str]
+_warned_types: set[str] = set()
 
 
 class CMakeLists(object):
@@ -683,7 +677,7 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
         # If name is "all", then just expand the global list
         if name == "all":
             global OPTIONAL_DEPENDS
-            OPTIONAL_DEPENDS |= set(deps) if not isinstance(deps, str) else set([deps])
+            OPTIONAL_DEPENDS |= set(deps) if not isinstance(deps, str) else {deps}
             logger.debug(
                 "Expanding global optional dependency list with: {}".format(deps)
             )
@@ -696,7 +690,7 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
     for name, deps in data.get("required_optional_external", {}).items():
         if name == "all":
             global REQUIRED_OPTIONAL
-            REQUIRED_OPTIONAL |= set(deps) if not isinstance(deps, str) else set([deps])
+            REQUIRED_OPTIONAL |= set(deps) if not isinstance(deps, str) else {deps}
             logger.debug(
                 "Expanding global required optional dependency list with: {}".format(
                     deps

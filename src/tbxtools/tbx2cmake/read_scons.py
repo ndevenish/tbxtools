@@ -210,13 +210,12 @@ class TBXDistribution(object):
 
     @property
     def all_generated(self):
-        return {
-            x
-            for x in set(self.other_generated)
+        return set(
+            set(self.other_generated)
             | set(
                 itertools.chain(*(x.generated_sources for x in self._modules.values()))
             )
-        }
+        )
 
 
 def _build_dependency_graph(modules):
@@ -325,7 +324,7 @@ def _deduplicate_target_names(targets):
     namecount = collections.Counter([x.name for x in targets])
     for duplicate in [x for x in namecount.keys() if namecount[x] > 1]:
         duped = [x for x in targets if x.name == duplicate]
-        modules = set(x.module for x in duped)
+        modules = {x.module for x in duped}
         assert len(modules) == len(duped), (
             "Module name not enough to disambiguate duplicate targets "
             "named {} (in {})"
@@ -335,7 +334,7 @@ def _deduplicate_target_names(targets):
             target.name = "{}_{}".format(target.name, target.module.name)
             logger.info("Renaming target {} to {}".format(oldname, target.name))
     assert all(
-        [x == 1 for _, x in collections.Counter([x.name for x in targets]).items()]
+        x == 1 for _, x in collections.Counter([x.name for x in targets]).items()
     ), "Deduplication failed"
 
 
