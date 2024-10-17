@@ -549,7 +549,6 @@ class SconsEmulator(object):
         do_import_patching(dist)
 
     def parse_module(self, module):
-
         self._current_module = module
         scons = os.path.join(self.dist_path, module.path, "SConscript")
         if not os.path.isfile(scons):

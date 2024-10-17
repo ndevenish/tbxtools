@@ -1,5 +1,7 @@
 """Monkeypatching scitbx/cctbx for diagnostics output"""
 
+from __future__ import annotations
+
 import enum
 import re
 from io import StringIO

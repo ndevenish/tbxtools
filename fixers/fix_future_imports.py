@@ -20,6 +20,9 @@ This is useful for tidiness but also required because not running the
 full futurize stage2 doesn't go back and fixup the split import
 declarations.
 """
+
+from __future__ import annotations
+
 import argparse
 from typing import List, Optional
 

@@ -20,6 +20,8 @@ Options:
                             tbxtools/tbx2cmake/build_info.yaml for the defaults.
 """
 
+from __future__ import annotations
+
 import itertools
 import logging
 import os
@@ -103,7 +105,7 @@ class CMakeLists(object):
             # Skip over the cctbx_project subdir for a module-based root
             if parts[0] == "cctbx_project":
                 parts = [os.path.join(*parts[:2])] + parts[2:]
-            if not parts[0] in self.subdirectories:
+            if parts[0] not in self.subdirectories:
                 subdir = CMakeLists(parts[0], parent=self)
                 self.subdirectories[parts[0]] = subdir
             else:
@@ -478,12 +480,16 @@ class CMLLibraryOutput(CMakeListBlock):
             )
             # cond_lines = []
             if len(combined_requirements) == 1:
-                comment_message = "# {} requires this normally optional dependency".format(  # noqa: E501
-                    self.target.name
+                comment_message = (
+                    "# {} requires this normally optional dependency".format(  # noqa: E501
+                        self.target.name
+                    )
                 )
             else:
-                comment_message = "# {} requires these normally optional dependencies".format(  # noqa: E501
-                    self.target.name
+                comment_message = (
+                    "# {} requires these normally optional dependencies".format(  # noqa: E501
+                        self.target.name
+                    )
                 )
 
             conditions = " AND ".join(
@@ -748,7 +754,6 @@ def _target_rename(name):
 
 
 def main():
-
     options = docopt(__doc__)
     logging.basicConfig(level=logging.INFO if not options["-v"] else logging.DEBUG)
     module_dir = options["<module_dir>"]

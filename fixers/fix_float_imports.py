@@ -12,6 +12,8 @@ Doesn't float imports that:
     - Are importing matplotlib (deal with this case later)
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 from functools import lru_cache

@@ -4,6 +4,8 @@
 Contains the model objects for a tbx-like distribution
 """
 
+from __future__ import annotations
+
 import ast
 import logging
 import os

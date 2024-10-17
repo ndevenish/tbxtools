@@ -3,6 +3,8 @@
 Find all extension imports and (eventually) rewrite them
 """
 
+from __future__ import annotations
+
 import argparse
 import pprint
 from pathlib import Path

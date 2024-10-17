@@ -4,6 +4,8 @@
 Reads a tree of SConscripts and extracts module and target information
 """
 
+from __future__ import annotations
+
 import collections
 import itertools
 import logging
@@ -257,7 +259,7 @@ def _build_dependency_graph(modules):
     # X_adaptbx
     for src, dst in list(G.edges):
         adaptbx = dst + "_adaptbx"
-        if adaptbx in G.nodes and not (src, adaptbx) in G.edges:
+        if adaptbx in G.nodes and (src, adaptbx) not in G.edges:
             logger.debug("Adding extra adaptbx edge %s, %s", src, adaptbx)
             G.add_edge(src, adaptbx)
 

@@ -4,6 +4,8 @@
 Prepares the import environment for running the tbx SCons scripts
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import re

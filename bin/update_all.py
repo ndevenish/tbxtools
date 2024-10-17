@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import functools
 import os
 import sys
@@ -294,7 +296,6 @@ def find_all_repos(path: Path) -> List[Task]:
 
 
 if __name__ == "__main__":  # noqa: C901
-
     parser = ArgumentParser(
         description="Update all repositories in an immediate subdirectory"
     )

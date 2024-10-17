@@ -18,6 +18,8 @@ to turn them back to logger-style deferred formatting.
 Requires python3 with the packages bowler, pytest available.
 """
 
+from __future__ import annotations
+
 import argparse
 import re
 from typing import List, Optional
@@ -188,9 +190,10 @@ RE_UNDERSTOOD_FORMAT = re.compile(r"(?<!{)({:\d*.\d+f}|{:>\d+}|{})")
 
 
 def process_percent_format(
-    node: LN, capture: Capture, filename: Filename  # noqa: U100
+    node: LN,
+    capture: Capture,
+    filename: Filename,  # noqa: U100
 ) -> Optional[LN]:
-
     # if capture["formatstr"] has more than one format point, don't
     # expand it for now
     # if capture["formatstr"]:
@@ -245,9 +248,10 @@ def process_percent_format(
 
 
 def process_format_format(
-    node: LN, capture: Capture, filename: Filename  # noqa: U100
+    node: LN,
+    capture: Capture,
+    filename: Filename,  # noqa: U100
 ) -> Optional[LN]:
-
     formatstring = capture["formatstr"]
     if formatstring.type != token.STRING:
         print("Not formatting {filename}:{node.get_lineno()} because indirect format")
