@@ -373,9 +373,9 @@ def checker(tmp_path):
         actual_out = _compact(filename.read_text())
         if expected_out is None:
             expected_out = input_text
-        assert (
-            _compact(expected_out) == actual_out
-        ), "Tranformed code does not match expected"
+        assert _compact(expected_out) == actual_out, (
+            "Tranformed code does not match expected"
+        )
 
     return _checker
 

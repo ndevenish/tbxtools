@@ -428,7 +428,7 @@ if __name__ == "__main__":  # noqa: C901
                         linecolour = G
                         colour = ""
                     update_message.write(
-                        f"{linecolour}    {path.name+':':{task_name_width+1}} {colour}{status.status}{NC}\n"
+                        f"{linecolour}    {path.name + ':':{task_name_width + 1}} {colour}{status.status}{NC}\n"
                     )
                 print(update_message.getvalue(), flush=True, end="")
 

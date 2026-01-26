@@ -110,7 +110,7 @@ class CMakeLists(object):
                 return subdir
 
     def draw_tree(self, indent="", last=True, root=True):
-        "Quick and easy function to dump a tree representation" ""
+        "Quick and easy function to dump a tree representation"
         line = indent
         if not root:
             if last:
@@ -234,9 +234,9 @@ class CMLModuleRootBlock(CMakeListBlock):
 
             # Handle any replacements in this path
             for path in module.include_paths:
-                assert not path.startswith(
-                    "!"
-                ), "No private includes for interface libraries"
+                assert not path.startswith("!"), (
+                    "No private includes for interface libraries"
+                )
                 path = _expand_include_path(path)
                 include_paths.add(path)
             linepre = "target_include_directories( {} INTERFACE ".format(module.name)
@@ -648,9 +648,9 @@ def _read_autogen_information(filename, tbx: TBXDistribution):
                     target.shared_sources.append(all_shared_objects[source])
                     continue
 
-                assert (
-                    genpath in tbx.all_generated
-                ), "Could not find missing source {}:{}".format(target.name, source)
+                assert genpath in tbx.all_generated, (
+                    "Could not find missing source {}:{}".format(target.name, source)
+                )
                 # print("   Found generated at {}".format(genpath))
                 target.sources.remove(source)
                 target.generated_sources.add(genpath)

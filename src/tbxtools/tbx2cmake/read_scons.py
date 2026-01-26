@@ -288,9 +288,9 @@ def _build_dependency_graph(modules):
             for config_list, entries in module._config.items():
                 if end in entries and config_list in cycle_breaking_order:
                     edge_priority = cycle_breaking_order.index(config_list)
-            assert (
-                edge_priority is not None
-            ), "Could not find loop edge {} in configuration for {}".format(end, start)
+            assert edge_priority is not None, (
+                "Could not find loop edge {} in configuration for {}".format(end, start)
+            )
             logger.debug(
                 ". Edge ({}, {}) priority = {}".format(start, end, edge_priority)
             )
@@ -299,9 +299,9 @@ def _build_dependency_graph(modules):
             if lowest_priority is None or edge_priority > lowest_priority:
                 lowest_priority, lowest_priority_edge = (edge_priority, (start, end))
 
-        assert (
-            edge_priority is not None
-        ), "Could not find ANY loop edge priorities in cycle. Fatal Error."
+        assert edge_priority is not None, (
+            "Could not find ANY loop edge priorities in cycle. Fatal Error."
+        )
 
         logger.info(
             "Resolving cycle by removing dependency {}={} from {}".format(
@@ -326,8 +326,7 @@ def _deduplicate_target_names(targets):
         duped = [x for x in targets if x.name == duplicate]
         modules = {x.module for x in duped}
         assert len(modules) == len(duped), (
-            "Module name not enough to disambiguate duplicate targets "
-            "named {} (in {})"
+            "Module name not enough to disambiguate duplicate targets named {} (in {})"
         ).format(duplicate, modules)
         for target in duped:
             oldname = target.name
